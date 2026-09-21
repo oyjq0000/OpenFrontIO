@@ -2,7 +2,6 @@ import { html, TemplateResult } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { translateText } from "../client/Utils";
 import { UserMeResponse } from "../core/ApiSchemas";
-import { assetUrl } from "../core/AssetUrls";
 import { DoomsdayClockSpeed } from "../core/game/DoomsdayClock";
 import {
   Difficulty,
@@ -24,13 +23,11 @@ import "./components/GameConfigSettings";
 import { MEDAL_ORDER, medalIcon } from "./components/map/Medals";
 import "./components/ToggleInputCard";
 import { modalHeader } from "./components/ui/ModalHeader";
-import { getPlayerCosmetics, prewarmCosmetics } from "./Cosmetics";
-import { crazyGamesSDK } from "./CrazyGamesSDK";
 import { GameStartingModal } from "./GameStartingModal";
 import { showInGameAlert } from "./InGameModal";
+import { getLocalPlayerName } from "./LocalFork";
 import { JoinLobbyEvent } from "./Main";
-import { fallbackPlayerName, ResolvedPlayerName } from "./PlayerName";
-import { UsernameInput } from "./UsernameInput";
+import { ResolvedPlayerName } from "./PlayerName";
 import {
   getBotsForCompactMap,
   getNationsForCompactMap,
@@ -45,49 +42,7 @@ import {
 
 import { terrainMapFileLoader } from "./TerrainMapFileLoader";
 
-/**
- * Ceiling on how long a Start Game click will wait for the player's name and
- * cosmetics before starting on defaults.
- *
- * A backstop for a wait that never settles, but not only that: the bounds
- * beneath it chain rather than sit in parallel — getPlayerCosmetics reaches
- * getUserMe, which awaits userAuth's 10s-bounded /auth/refresh before issuing
- * its own 10s-bounded /users/@me — so a genuinely slow leg can exceed this and
- * be pre-empted. That is accepted: the cost is one single-player game on
- * default cosmetics, against a Start button that would otherwise sit at
- * "Starting…" for however long the chain takes. prewarmCosmetics() spends
- * that time while the player is still choosing, which is what keeps the case
- * rare rather than routine.
- */
-export const START_PREPARE_DEADLINE_MS = 15_000;
-
-/**
- * Ceiling on the CrazyGames midgame ad, deliberately far above
- * START_PREPARE_DEADLINE_MS: an ad creative routinely runs 15-30s and it has
- * to gate the start, because dispatching behind one puts gameplay — spawn
- * selection included — under a still-visible overlay. This exists only for an
- * SDK that never calls adFinished or adError at all. Off CrazyGames,
- * requestMidgameAd() resolves immediately and none of this is reached.
- */
-export const MIDGAME_AD_DEADLINE_MS = 60_000;
-
-/**
- * `work`, or `onDeadline()` if it has not settled within `ms`. The timer is
- * always cleared, so the fast path costs nothing.
- */
-function withDeadline<T>(
-  work: Promise<T>,
-  ms: number,
-  onDeadline: () => T,
-): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const deadline = new Promise<T>((resolve) => {
-    timer = setTimeout(() => resolve(onDeadline()), ms);
-  });
-  return Promise.race([work, deadline]).finally(() => clearTimeout(timer));
-}
-
-/** What a start has to wait for before it can dispatch join-lobby. */
+/** Local identity/cosmetics needed to dispatch a single-player start. */
 type StartPreparation = {
   resolvedName: ResolvedPlayerName;
   cosmetics: PlayerCosmetics;
@@ -279,18 +234,7 @@ export class SinglePlayerModal extends BaseModal {
   };
 
   private renderNotLoggedInBanner(): TemplateResult {
-    if (crazyGamesSDK.isOnCrazyGames()) {
-      return html``;
-    }
-    return html`<button
-      class="px-3 py-2 text-xs font-bold uppercase tracking-wider transition-colors duration-200 rounded-lg bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 whitespace-nowrap shrink-0 cursor-pointer hover:bg-yellow-500/30"
-      @click=${() => {
-        this.close();
-        window.showPage?.("page-account");
-      }}
-    >
-      ${translateText("single_modal.sign_in_for_achievements")}
-    </button>`;
+    return html``;
   }
 
   private applyAchievements(userMe: UserMeResponse | false) {
@@ -323,29 +267,9 @@ export class SinglePlayerModal extends BaseModal {
 
   protected renderHeaderSlot() {
     return modalHeader({
-      title: translateText("main.solo") || "Solo",
+      title: "Play Solo",
       onBack: () => this.close(),
       ariaLabel: translateText("common.back"),
-      rightContent: responseHasLinkedIdentity(this.userMeResponse)
-        ? html`<button
-              @click=${this.toggleAchievements}
-              class="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all shrink-0 ${this
-                .showAchievements
-                ? "bg-yellow-500/10 border-yellow-500/30 text-yellow-400"
-                : "text-white/60"}"
-            >
-              <img
-                src=${assetUrl("images/MedalIconWhite.svg")}
-                class="w-4 h-4 opacity-80 shrink-0"
-                style="${this.showAchievements ? "" : "filter: grayscale(1);"}"
-              />
-              <span
-                class="text-xs font-bold uppercase tracking-wider whitespace-nowrap"
-                >${translateText("single_modal.toggle_achievements")}</span
-              >
-            </button>
-            ${this.showAchievements ? this.renderMedalOverview() : null}`
-        : this.renderNotLoggedInBanner(),
     });
   }
 
@@ -647,9 +571,6 @@ export class SinglePlayerModal extends BaseModal {
    * card for new players).
    */
   public async startTutorial(): Promise<void> {
-    // The modal never opens on this path, so onOpen's prewarm never runs.
-    // Overlap it with the manifest load below.
-    void prewarmCosmetics();
     this.resetOptions();
     // A nation count of 0 means "nations disabled"; wait for the real one.
     await this.loadNationCount();
@@ -694,13 +615,6 @@ export class SinglePlayerModal extends BaseModal {
 
   protected onOpen(): void {
     void this.loadNationCount();
-    // Spend the cosmetics round trip while the player is picking a map, not
-    // after they commit. startGame() still resolves cosmetics properly; this
-    // only moves the network time off the click, for the slow-but-reachable
-    // case. It does not help when the backend is unreachable: fetchCosmetics
-    // deliberately does not cache a failure, so the click re-pays one bounded
-    // attempt. Remembering an unreachable backend is OPE-403.
-    void prewarmCosmetics();
   }
 
   private handleSelectRandomMap() {
@@ -957,82 +871,16 @@ export class SinglePlayerModal extends BaseModal {
     this.teamCount = value;
   }
 
-  /**
-   * The name and cosmetics the dispatch needs, bounded so neither can outlive
-   * the button waiting on them.
-   *
-   * Both waits can reach code with no bound of its own — the Steam name seed
-   * is a bare IPC call, cosmetics reach the network — and both degrade to
-   * something playable: the interim generated name, default cosmetics. A slow
-   * resolution here is a cost with nothing to show for it, so
-   * START_PREPARE_DEADLINE_MS cuts it short rather than pinning Start at
-   * "Starting…" for the rest of the session, which would take startTutorial()
-   * down with it on the re-entrancy guard.
-   *
-   * The midgame ad is deliberately not part of this — see awaitMidgameAd.
-   */
-  private async resolveNameAndCosmetics(
-    usernameInput: UsernameInput | null,
-  ): Promise<StartPreparation> {
-    const nameNow = () => usernameInput?.resolvedName() ?? fallbackPlayerName();
-
-    const prepared = await withDeadline(
-      (async (): Promise<StartPreparation> => {
-        // Wait for the one-shot Steam name-seed to settle before reading
-        // getUsername(), so a fast single-player start uses the Steam persona
-        // rather than the interim generated anon name.
-        await usernameInput?.whenSeeded();
-        // Name and badge from one resolution, as on the multiplayer join path.
-        const resolvedName = nameNow();
-        // onOpen() prewarmed the caches this reads, so it normally resolves
-        // without touching the network at all.
-        return {
-          resolvedName,
-          cosmetics: await getPlayerCosmetics({
-            verified: resolvedName.verified,
-          }),
-        };
-      })(),
-      START_PREPARE_DEADLINE_MS,
-      () => {
-        console.warn(
-          "Start preparation exceeded its deadline; starting on defaults",
-        );
-        const resolvedName = nameNow();
-        return {
-          resolvedName,
-          cosmetics: resolvedName.verified ? { verified: true } : {},
-        };
+  /** Resolve single-player identity without account, SDK, or API access. */
+  private resolveNameAndCosmetics(): StartPreparation {
+    return {
+      resolvedName: {
+        name: getLocalPlayerName(),
+        source: "stored",
+        verified: false,
       },
-    );
-
-    return prepared;
-  }
-
-  /**
-   * The CrazyGames midgame ad, on a bound of its own.
-   *
-   * Separate from resolveNameAndCosmetics because an ad is not the same kind
-   * of wait. It is the player watching something, legitimately for longer than
-   * START_PREPARE_DEADLINE_MS — racing it there cut real creatives short and
-   * dropped the player into spawn selection underneath a live overlay. So the
-   * ad gates the start, the button staying busy while it plays is correct
-   * rather than a hang, and MIDGAME_AD_DEADLINE_MS is sized only to catch an
-   * SDK that has stopped answering (requestMidgameAd resolves solely from its
-   * adFinished/adError callbacks).
-   *
-   * Only ever called for a start that is still live — an ad shown for a game
-   * that will not start is worse than no ad. Off CrazyGames this resolves
-   * immediately.
-   */
-  private awaitMidgameAd(): Promise<void> {
-    return withDeadline(
-      crazyGamesSDK.requestMidgameAd(),
-      MIDGAME_AD_DEADLINE_MS,
-      () => {
-        console.warn("Midgame ad never signalled completion; starting anyway");
-      },
-    );
+      cosmetics: {},
+    };
   }
 
   private async startGame() {
@@ -1060,9 +908,7 @@ export class SinglePlayerModal extends BaseModal {
       finalMaxTimerValue = Math.max(1, Math.min(120, this.maxTimerValue));
     }
 
-    // Everything past this point awaits something, some of it network-bound.
-    // Hold the button in its busy state until join-lobby is away so the wait
-    // reads as loading rather than as a dead click.
+    // Hold the button in its busy state until the local join event is dispatched.
     this.starting = true;
     const attempt = ++this.startAttempt;
     // The full-screen starting overlay, up from the click rather than at
@@ -1082,38 +928,9 @@ export class SinglePlayerModal extends BaseModal {
       const clientID = generateID();
       const gameID = generateID();
 
-      const usernameInput = document.querySelector(
-        "username-input",
-      ) as UsernameInput | null;
+      const { resolvedName, cosmetics } = this.resolveNameAndCosmetics();
 
-      // Resolved before the dispatch rather than inside it, so every wait is
-      // attributable to the busy button above, and bounded so none of them
-      // can outlive it.
-      const { resolvedName, cosmetics } =
-        await this.resolveNameAndCosmetics(usernameInput);
-
-      // Retired while this was resolving — the modal was closed, and possibly
-      // reopened and started again. The live attempt owns the start; this one
-      // would otherwise race it into join-lobby with stale settings.
-      //
-      // A start has exactly two side effects that leave this component, and
-      // BOTH must sit behind this check. Anything added here that escapes the
-      // component needs the same gate:
-      //   1. awaitMidgameAd() — shows the player a real ad, so an abandoned
-      //      attempt reaching it advertises a game that never starts, and a
-      //      reopened modal can put a second request in flight beside it.
-      //   2. the join-lobby dispatch — and everything downstream of it,
-      //      including Main's gameplayStart() and incrementGamesPlayed().
-      // resolveNameAndCosmetics() above is deliberately NOT gated: its only
-      // writes are validating stored cosmetic selections against the catalog
-      // and profile, which happens on any cosmetics resolution (menu
-      // background, store, inventory) rather than as a consequence of this
-      // start.
-      if (attempt !== this.startAttempt) return;
-
-      await this.awaitMidgameAd();
-
-      // The ad is long enough that the modal can be closed while it runs.
+      // If the modal was closed between click and dispatch, retire this attempt.
       if (attempt !== this.startAttempt) return;
 
       this.dispatchEvent(
@@ -1126,7 +943,7 @@ export class SinglePlayerModal extends BaseModal {
                 {
                   clientID,
                   username: resolvedName.name,
-                  clanTag: usernameInput?.getClanTag() ?? null,
+                  clanTag: null,
                   cosmetics,
                 },
               ],
@@ -1204,10 +1021,7 @@ export class SinglePlayerModal extends BaseModal {
       // settling later must not clear the busy state of the one that
       // replaced it.
       if (attempt === this.startAttempt) this.starting = false;
-      // An attempt that still owns the overlay dispatched nothing, so no
-      // downstream hide point will ever fire for it. onClose normally
-      // releases it the moment the modal is dismissed; this catches exits
-      // without a close, like resolveNameAndCosmetics() throwing.
+      // Release an overlay still owned by this local start attempt.
       if (this.overlayAttempt === attempt) {
         this.overlayAttempt = 0;
         overlay?.hide();

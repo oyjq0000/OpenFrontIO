@@ -4,7 +4,6 @@ import {
   resolveCosmetics,
   type ResolvedCosmetic,
 } from "../../../../src/client/Cosmetics";
-import type { PurchaseButton } from "../../../../src/client/components/PurchaseButton";
 import "../../../../src/client/hud/layers/WinModal";
 import type { WinModal } from "../../../../src/client/hud/layers/WinModal";
 import { RankedType } from "../../../../src/core/game/Game";
@@ -134,7 +133,7 @@ describe("WinModal pattern promotion", () => {
     modal = undefined;
   });
 
-  it("renders three card-and-purchase promotions from four purchasable patterns", async () => {
+  it("does not render store promotions in the local-only result modal", async () => {
     const purchasablePatterns: ResolvedCosmetic[] = [
       "aurora",
       "blaze",
@@ -168,26 +167,13 @@ describe("WinModal pattern promotion", () => {
     modal.requestUpdate();
     await modal.updateComplete;
 
-    const promotions = modal.querySelectorAll("[data-win-cosmetic-promo]");
-    expect(promotions).toHaveLength(3);
-    expect(modal.querySelectorAll("cosmetic-card")).toHaveLength(3);
-    expect(modal.querySelectorAll("purchase-button")).toHaveLength(3);
-    for (const button of modal.querySelectorAll<PurchaseButton>(
-      "purchase-button",
-    )) {
-      expect(button.rarity).toBe("rare");
-    }
-    for (const card of modal.querySelectorAll("cosmetic-card")) {
-      expect(card.querySelector("[data-cosmetic-main]")?.tagName).toBe("DIV");
-      expect(card.querySelectorAll("button")).toHaveLength(0);
-    }
-    const legacyButtonTag = ["cosmetic", "button"].join("-");
-    const legacyContainerTag = ["cosmetic", "container"].join("-");
-    expect(modal.querySelectorAll(legacyButtonTag)).toHaveLength(0);
-    expect(modal.querySelectorAll(legacyContainerTag)).toHaveLength(0);
+    expect(modal.textContent).toContain("Single-player match complete");
+    expect(modal.querySelectorAll("[data-win-cosmetic-promo]")).toHaveLength(0);
+    expect(modal.querySelectorAll("cosmetic-card")).toHaveLength(0);
+    expect(modal.querySelectorAll("purchase-button")).toHaveLength(0);
   });
 
-  it("drops the ad-free pitch in the desktop shell, which has no ads", async () => {
+  it("keeps the local-only result notice independent of desktop shell state", async () => {
     const render = async () => {
       modal = document.createElement("win-modal") as WinModal;
       Object.assign(modal as unknown as { rand: number; isWin: boolean }, {
@@ -199,14 +185,15 @@ describe("WinModal pattern promotion", () => {
       return modal.textContent ?? "";
     };
 
-    expect(await render()).toContain("win_modal.territory_pattern");
+    expect(await render()).toContain("Single-player match complete");
     modal?.remove();
 
     window.openfrontDesktop = {};
     try {
       const text = await render();
-      expect(text).toContain("win_modal.support_openfront");
+      expect(text).toContain("Single-player match complete");
       expect(text).not.toContain("win_modal.territory_pattern");
+      expect(text).not.toContain("win_modal.support_openfront");
     } finally {
       delete window.openfrontDesktop;
     }

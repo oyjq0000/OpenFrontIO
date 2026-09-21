@@ -1,0 +1,15 @@
+round_6x6_modified font provenance
+
+Original source:
+https://frostyfreeze.itch.io/pixel-bitmap-fonts-png-xml
+
+OpenFront provenance:
+commit c5c04a8d83b593cd2e9a881c116e99a5c8b06737
+("Show structure levels", 2025-07-02) states that round_6x6_modified
+was modified from the source above and that the source font is CC0.
+
+License:
+CC0 1.0 Universal
+https://creativecommons.org/publicdomain/zero/1.0/legalcode
+
+The modified PNG/XML files remain in resources/fonts/.

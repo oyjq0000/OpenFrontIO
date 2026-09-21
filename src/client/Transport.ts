@@ -401,6 +401,9 @@ export class Transport {
   ) {
     if (this.isLocal) {
       this.localServer.updateCallback(onconnect, onmessage);
+      // ClientGameRunner calls updateCallback only after its worker and
+      // renderer are ready to consume turns. LocalServer is created earlier.
+      this.localServer.activateTurnLoop();
     } else {
       this.onconnect = onconnect;
       this.onmessage = onmessage;
@@ -647,6 +650,11 @@ export class Transport {
   }
 
   async joinGame() {
+    // LocalServer already emits the start message directly and does not
+    // authenticate joins. Avoid the remote play-token path entirely for
+    // single-player/replay transports.
+    if (this.isLocal) return;
+
     this.sendMsg({
       type: "join",
       gameID: this.lobbyConfig.gameID,
@@ -663,6 +671,8 @@ export class Transport {
   }
 
   async rejoinGame(lastTurn: number) {
+    if (this.isLocal) return;
+
     this.sendMsg({
       type: "rejoin",
       gameID: this.lobbyConfig.gameID,

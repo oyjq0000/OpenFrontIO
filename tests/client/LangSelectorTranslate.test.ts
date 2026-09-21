@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { LangSelector } from "../../src/client/LangSelector";
+import { WORKING_TITLE } from "../../src/client/LocalFork";
 
 // applyTranslation/changeLanguage are private; drive them through a cast, the
 // same way GameInfoView.test.ts does. Constructing without attaching skips
@@ -41,7 +42,7 @@ describe("LangSelector applyTranslation", () => {
       document.querySelector('[data-i18n="test.bogus"]')!.textContent,
     ).toBe("untouched");
     expect(warn).toHaveBeenCalledWith("Translation key not found: test.bogus");
-    expect(document.title).toBe("OpenFront");
+    expect(document.title).toBe(WORKING_TITLE);
   });
 });
 

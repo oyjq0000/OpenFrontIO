@@ -51,6 +51,11 @@ const IGNORED_UNUSED_KEY_PATTERNS: RegExp[] = [
   // out of resources/lang/*.json and emits per-language files next to that
   // page. They live here so Crowdin picks them up like any other string.
   /^desktop_gate\./,
+  // The game-library fork intentionally keeps the upstream translation
+  // catalog for mergeability even though these official online-product
+  // surfaces are not mounted by the local-only shell.
+  /^main\.(clans|github|inventory|leaderboard|play|privacy_policy|terms_of_service|wiki)$/,
+  /^single_modal\.(sign_in_for_achievements|toggle_achievements)$/,
 ];
 
 type NestedTranslations = Record<string, unknown>;

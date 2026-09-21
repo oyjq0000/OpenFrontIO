@@ -2,6 +2,7 @@ import tailwindcss from "@tailwindcss/vite";
 import fs from "fs";
 import http from "http";
 import { lookup as lookupMime } from "mrmime";
+import { execFileSync } from "node:child_process";
 import path from "path";
 import { fileURLToPath } from "url";
 import { defineConfig, loadEnv, type Plugin } from "vite";
@@ -16,7 +17,6 @@ import {
   buildPublicAssetManifest,
   copyRootPublicFiles,
   createHashedPublicAssetFiles,
-  getProprietaryDir,
   getPublicDir,
   getResourcesDir,
   writePublicAssetManifest,
@@ -42,34 +42,6 @@ function serveRootPublicDir(publicDir: string): Plugin {
           return next();
         if (rel === "" || rel.endsWith("/")) rel += "index.html";
         const filePath = path.join(publicDir, rel);
-        if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile())
-          return next();
-        const mime = lookupMime(filePath);
-        if (mime) res.setHeader("Content-Type", mime);
-        res.setHeader("Cache-Control", "no-store");
-        fs.createReadStream(filePath).pipe(res);
-      });
-    },
-  };
-}
-
-function serveProprietaryDir(
-  proprietaryDir: string,
-  resourcesDir: string,
-): Plugin {
-  return {
-    name: "serve-proprietary-dir",
-    configureServer(server) {
-      // Must run before Vite's htmlFallback; skip when resources/ has the file
-      // so publicDir keeps precedence.
-      server.middlewares.use((req, res, next) => {
-        if (!req.url) return next();
-        const rel = decodeURIComponent(
-          new URL(req.url, "http://x").pathname,
-        ).replace(/^\//, "");
-        if (rel.includes("..")) return next();
-        if (fs.existsSync(path.join(resourcesDir, rel))) return next();
-        const filePath = path.join(proprietaryDir, rel);
         if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile())
           return next();
         const mime = lookupMime(filePath);
@@ -181,6 +153,19 @@ function randomWorkerCreateProxy(numWorkers: number): Plugin {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const isProduction = mode === "production";
+  const isGameLibraryStatic =
+    isProduction &&
+    (env.GAME_LIBRARY_STATIC === "1" ||
+      process.env.GAME_LIBRARY_STATIC === "1");
+  const configuredGameLibraryCommit = [env.GIT_COMMIT, process.env.GIT_COMMIT]
+    .map((value) => value?.trim())
+    .find((value): value is string => Boolean(value));
+  const gameLibraryGitCommit = isGameLibraryStatic
+    ? (configuredGameLibraryCommit ??
+      execFileSync("git", ["rev-parse", "HEAD"], {
+        encoding: "utf8",
+      }).trim())
+    : "DEV";
   // Dev identity: the same INSTANCE_LETTER / NUM_WORKERS defaults the dev
   // server boots with (ServerEnv), so the dev-served index.html carries the
   // one-entry map production RenderHtml injects. The proxy below needs the
@@ -206,12 +191,31 @@ export default defineConfig(({ mode }) => {
     [devInstanceLetter]: { host: "localhost", numWorkers: devNumWorkers },
   });
   const resourcesDir = getResourcesDir(__dirname);
-  const proprietaryDir = getProprietaryDir(__dirname);
-  const sourceDirs = [resourcesDir, proprietaryDir];
+  const sourceDirs = [resourcesDir];
   const assetManifest: AssetManifest = isProduction
     ? buildPublicAssetManifest(sourceDirs)
     : {};
   const cdnBase = env.CDN_BASE ?? "";
+  const staticGameLibraryHtmlData = {
+    assetManifest: JSON.stringify(assetManifest),
+    cdnBase: JSON.stringify(""),
+    gameEnv: JSON.stringify("prod"),
+    turnstileSiteKey: JSON.stringify(""),
+    jwtAudience: JSON.stringify("localhost"),
+    manifestHref: buildAssetUrl("manifest.json", assetManifest, ""),
+    gameplayScreenshotUrl: buildAssetUrl(
+      "images/GameplayScreenshot.png",
+      assetManifest,
+      "",
+    ),
+    backgroundImageUrl: buildAssetUrl(
+      "images/background.webp",
+      assetManifest,
+      "",
+    ),
+    gitCommit: JSON.stringify(gameLibraryGitCommit),
+  };
+
   const htmlAssetData = {
     assetManifest: JSON.stringify(assetManifest),
     cdnBase: JSON.stringify(cdnBase),
@@ -224,7 +228,6 @@ export default defineConfig(({ mode }) => {
     jwtAudience: JSON.stringify(env.DOMAIN ?? "localhost"),
     instanceId: JSON.stringify(env.INSTANCE_ID ?? "DEV_ID"),
     manifestHref: buildAssetUrl("manifest.json", assetManifest, cdnBase),
-    faviconHref: buildAssetUrl("images/Favicon.svg", assetManifest, cdnBase),
     gameplayScreenshotUrl: buildAssetUrl(
       "images/GameplayScreenshot.png",
       assetManifest,
@@ -235,12 +238,6 @@ export default defineConfig(({ mode }) => {
       assetManifest,
       cdnBase,
     ),
-    desktopLogoImageUrl: buildAssetUrl(
-      "images/OpenFront.png",
-      assetManifest,
-      cdnBase,
-    ),
-    mobileLogoImageUrl: buildAssetUrl("images/OF.png", assetManifest, cdnBase),
   };
 
   // Vite's HTML transform replaces the source <script src="/src/client/Main.ts">
@@ -268,7 +265,7 @@ export default defineConfig(({ mode }) => {
       writeRootFilesIndex(getPublicDir(resourcesDir), outDir);
       // Run the source→hashed copy first; createHashedPublicAssetFiles iterates
       // assetManifest and expects every key to resolve to a file in resources/
-      // or proprietary/. Vite's bundle output (assets/...) doesn't, so it's
+      // from the open resources tree. Vite's bundle output (assets/...) does not, so it is
       // merged in after.
       createHashedPublicAssetFiles(sourceDirs, outDir, assetManifest);
       // Track Vite's own bundle output (vendor chunks, JS, CSS, workers under
@@ -336,14 +333,12 @@ export default defineConfig(({ mode }) => {
       ...(!isProduction
         ? [
             serveRootPublicDir(getPublicDir(resourcesDir)),
-            serveProprietaryDir(proprietaryDir, resourcesDir),
             randomWorkerCreateProxy(devNumWorkers),
             steamLinkAliasRedirect(),
           ]
         : []),
-      ...(isProduction
-        ? []
-        : [
+      ...(!isProduction
+        ? [
             createHtmlPlugin({
               minify: false,
               entry: "/src/client/Main.ts",
@@ -355,15 +350,28 @@ export default defineConfig(({ mode }) => {
                 },
               },
             }),
-          ]),
-      ...(isProduction
-        ? [injectCdnBaseTemplate(), syncHashedPublicAssets()]
+          ]
         : []),
+      ...(isGameLibraryStatic
+        ? [
+            createHtmlPlugin({
+              minify: false,
+              entry: "/src/client/Main.ts",
+              template: "index.html",
+              inject: { data: staticGameLibraryHtmlData },
+            }),
+          ]
+        : []),
+      ...(isProduction && !isGameLibraryStatic
+        ? [injectCdnBaseTemplate()]
+        : []),
+      ...(isProduction ? [syncHashedPublicAssets()] : []),
       tailwindcss(),
     ],
 
     define: {
       __ASSET_MANIFEST__: JSON.stringify(assetManifest),
+      __GAME_LIBRARY_STATIC__: JSON.stringify(isGameLibraryStatic),
       "process.env.WEBSOCKET_URL": JSON.stringify(
         isProduction ? "" : "localhost:3000",
       ),

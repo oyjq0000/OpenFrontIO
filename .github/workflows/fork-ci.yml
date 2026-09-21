@@ -1,0 +1,74 @@
+name: Fork CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify local game-library build
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout exact source revision
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          submodules: false
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test
+        run: npm test
+
+      - name: Build supported game-library artifact
+        run: npm run build-game-library
+
+      - name: Verify final build metadata and source SHA
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          const info = JSON.parse(fs.readFileSync("static/game-library-build-info.json", "utf8"));
+          const html = fs.readFileSync("static/index.html", "utf8");
+          for (const file of ["static/asset-hashes.json", "static/core-version.txt", "static/game-library-build-info.json"]) {
+            if (!fs.existsSync(file)) throw new Error(`missing final build artifact: ${file}`);
+          }
+          if (info.forkSha !== process.env.EXPECTED_SHA) {
+            throw new Error(`fork SHA mismatch: expected ${process.env.EXPECTED_SHA}, got ${info.forkSha}`);
+          }
+          if (!info.correspondingSource.endsWith(`/tree/${process.env.EXPECTED_SHA}`)) {
+            throw new Error("corresponding source is not pinned to the build SHA");
+          }
+          if (!html.includes(`gitCommit: "${process.env.EXPECTED_SHA}"`)) {
+            throw new Error("static index does not embed the build SHA");
+          }
+          const audit = info.assetAudit;
+          if (audit.proprietaryPathMatches.length || audit.proprietaryHashMatches.length || audit.proprietaryTextMatches.length) {
+            throw new Error("final proprietary audit contains matches");
+          }
+          NODE
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Prettier
+        run: npx prettier --check .
+
+      - name: Diff check
+        run: git diff --check

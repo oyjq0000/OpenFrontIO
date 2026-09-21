@@ -1,76 +1,76 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { isOnCrazyGames } = vi.hoisted(() => ({
-  isOnCrazyGames: vi.fn(() => false),
-}));
-vi.mock("../../src/client/CrazyGamesSDK", () => ({
-  crazyGamesSDK: {
-    isOnCrazyGames,
-    getUsername: vi.fn(async () => null),
-    getUserProfile: vi.fn(async () => null),
-    showAuthPrompt: vi.fn(async () => null),
-    addAuthListener: vi.fn(),
-  },
-}));
-vi.mock("../../src/core/AssetUrls", () => ({
-  assetUrl: (path: string) => path,
-}));
+import { ONLINE_PLAY_URL } from "../../src/client/LocalFork";
+import "../../src/client/components/PlayPage";
 
-// Rendering play-page mounts its children too (steam-wishlist, cosmetic
-// background, …), and some reach for browser APIs jsdom doesn't ship.
-vi.stubGlobal(
-  "ResizeObserver",
-  class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  },
-);
+type PlayPageElement = HTMLElement & { updateComplete: Promise<unknown> };
 
-import { PlayPage } from "../../src/client/components/PlayPage";
+describe("local game-library home", () => {
+  let page: PlayPageElement;
 
-describe("play-page mobile top bar", () => {
-  let el: PlayPage;
-
-  async function mount() {
-    if (!customElements.get("play-page")) {
-      customElements.define("play-page", PlayPage);
-    }
-    el = document.createElement("play-page") as PlayPage;
-    document.body.appendChild(el);
-    await el.updateComplete;
-  }
+  beforeEach(async () => {
+    document.body.innerHTML = "";
+    localStorage.clear();
+    window.showPage = vi.fn();
+    page = document.createElement("play-page") as PlayPageElement;
+    document.body.appendChild(page);
+    await page.updateComplete;
+  });
 
   afterEach(() => {
-    el?.remove();
-    vi.clearAllMocks();
-    isOnCrazyGames.mockReturnValue(false);
+    page.remove();
+    vi.restoreAllMocks();
   });
 
-  const rightSlot = () =>
-    Array.from(el.querySelector(".col-start-3")!.children).map((c) =>
-      c.tagName.toLowerCase(),
+  it("routes Play Solo to the existing single-player modal", () => {
+    const solo = Array.from(page.querySelectorAll("button")).find(
+      (button) => button.textContent?.trim() === "Play Solo",
     );
+    expect(solo).toBeDefined();
 
-  describe("off CrazyGames", () => {
-    beforeEach(mount);
+    solo!.click();
 
-    it("puts the bell/help icons beside the profile menu", () => {
-      expect(rightSlot()).toEqual(["nav-utility-icons", "nav-account-menu"]);
-    });
+    expect(window.showPage).toHaveBeenCalledWith("page-single-player");
   });
 
-  describe("on CrazyGames", () => {
-    beforeEach(async () => {
-      isOnCrazyGames.mockReturnValue(true);
-      await mount();
-    });
+  it("uses a normal safe external CrazyGames link for Play Online", () => {
+    const online = Array.from(page.querySelectorAll("a")).find(
+      (link) => link.textContent?.trim() === "Play Online",
+    ) as HTMLAnchorElement | undefined;
 
-    it("renders the same controls — the menu covers their sign-in too", () => {
-      // News and Help left the hamburger, so the icons have to be here for
-      // CrazyGames players; the profile menu's own "Sign in" item hands off to
-      // their SDK prompt, so no platform-specific button is needed.
-      expect(rightSlot()).toEqual(["nav-utility-icons", "nav-account-menu"]);
-    });
+    expect(online?.href).toBe(ONLINE_PLAY_URL);
+    expect(online?.target).toBe("_blank");
+    expect(online?.rel.split(/\s+/)).toEqual(
+      expect.arrayContaining(["noopener", "noreferrer"]),
+    );
+    expect(page.textContent).toContain(
+      "Online multiplayer is provided externally via CrazyGames.",
+    );
+  });
+
+  it("exposes corresponding source, licenses and the upstream baseline", () => {
+    const labels = Array.from(page.querySelectorAll("a")).map((link) =>
+      link.textContent?.trim(),
+    );
+    expect(labels).toEqual(
+      expect.arrayContaining([
+        "Attribution",
+        "Source Code",
+        "Licenses",
+        "Upstream bb8af015b515",
+      ]),
+    );
+    const source = Array.from(page.querySelectorAll("a")).find(
+      (link) => link.textContent?.trim() === "Source Code",
+    ) as HTMLAnchorElement;
+    expect(source.href).toContain("/tree/main");
+  });
+
+  it("does not mount official account, shop, ranked, clan or leaderboard controls", () => {
+    expect(page.textContent).not.toMatch(
+      /sign in|account|shop|ranked|clan|leaderboard/i,
+    );
+    expect(page.querySelector("nav-account-menu")).toBeNull();
+    expect(page.querySelector("steam-wishlist")).toBeNull();
   });
 });

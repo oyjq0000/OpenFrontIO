@@ -222,7 +222,7 @@ export class JoinLobbyModal extends BaseModal {
 
   private loadStartAlertSound(): Howl {
     this.startAlertSound ??= new Howl({
-      src: [assetUrl("sounds/effects/game-start-alert.mp3")],
+      src: [assetUrl("sounds/effects/game-start.mp3")],
     });
     return this.startAlertSound;
   }
