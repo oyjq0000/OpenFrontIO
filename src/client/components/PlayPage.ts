@@ -1,11 +1,14 @@
 import { html, LitElement } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import {
-  ATTRIBUTION_URL,
+  attributionUrl,
   getLocalPlayerName,
+  licensesUrl,
   ONLINE_PLAY_URL,
   setLocalPlayerName,
-  SOURCE_CODE_URL,
+  sourceCodeUrl,
+  UPSTREAM_BASELINE_SHA,
+  upstreamBaselineUrl,
   WORKING_TITLE,
 } from "../LocalFork";
 
@@ -33,6 +36,11 @@ export class PlayPage extends LitElement {
   }
 
   render() {
+    const attribution = attributionUrl();
+    const license = licensesUrl();
+    const source = sourceCodeUrl();
+    const upstream = upstreamBaselineUrl();
+
     return html`
       <section
         id="page-play"
@@ -111,18 +119,36 @@ export class PlayPage extends LitElement {
           </button>
           <a
             class="hover:text-white"
-            href=${ATTRIBUTION_URL}
+            href=${attribution}
             target="_blank"
             rel="noopener noreferrer"
-            >Attribution</a
           >
+            Attribution
+          </a>
           <a
             class="hover:text-white"
-            href=${SOURCE_CODE_URL}
+            href=${source}
             target="_blank"
             rel="noopener noreferrer"
-            >Source Code</a
           >
+            Source Code
+          </a>
+          <a
+            class="hover:text-white"
+            href=${license}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Licenses
+          </a>
+          <a
+            class="hover:text-white"
+            href=${upstream}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Upstream ${UPSTREAM_BASELINE_SHA.slice(0, 12)}
+          </a>
         </div>
       </section>
     `;

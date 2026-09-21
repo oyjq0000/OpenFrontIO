@@ -1,6 +1,6 @@
-import { LitElement, html } from "lit";
+import { html, LitElement } from "lit";
 import { customElement } from "lit/decorators.js";
-import { SOURCE_CODE_URL, WORKING_TITLE } from "../LocalFork";
+import { sourceCodeUrl, WORKING_TITLE } from "../LocalFork";
 
 const ITEM =
   "nav-menu-item block w-full text-left text-lg font-bold text-white/75 hover:text-sky-400 py-3";
@@ -20,7 +20,7 @@ export class MobileNavBar extends LitElement {
         <button class=${ITEM} data-page="page-help">Help / Controls</button>
         <a
           class=${ITEM}
-          href=${SOURCE_CODE_URL}
+          href=${sourceCodeUrl()}
           target="_blank"
           rel="noopener noreferrer"
           >Source Code</a

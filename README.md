@@ -10,7 +10,7 @@ This fork is intended for a Web game library. The playable build keeps OpenFront
 - Online multiplayer is not operated by this fork; the UI links externally to CrazyGames.
 - This project is not official OpenFront and is not endorsed by OpenFront Inc.
 
-See [NOTICE.md](NOTICE.md) for attribution and modification details.
+See [NOTICE.md](NOTICE.md) for attribution and modification details, and [docs/THIRD_PARTY_LICENSES.md](docs/THIRD_PARTY_LICENSES.md) for third-party asset licenses.
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![Open assets: CC BY-SA 4.0](https://img.shields.io/badge/Assets-CC%20BY--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-sa/4.0/)
@@ -30,6 +30,7 @@ See the [LICENSE](LICENSE) for complete requirements.
 
 For asset licensing, see [LICENSE-ASSETS](LICENSE-ASSETS).  
 For license history, see [LICENSING.md](LICENSING.md).
+For third-party fonts and other independently licensed resources, see [docs/THIRD_PARTY_LICENSES.md](docs/THIRD_PARTY_LICENSES.md).
 
 ## 🌟 Local edition features
 
@@ -76,13 +77,19 @@ Vite serves the game at `http://localhost:9000/` by default. Open **Play Solo** 
 
 `npm run dev` and the server scripts remain in the repository for upstream compatibility, but they are not required for the game-library edition and are not part of its supported play path.
 
-Production builds are created with:
+Build the directly hostable game-library edition with:
 
 ```bash
-npm run build-prod
+npm run build-game-library
 ```
 
+This build emits a same-origin static `static/` tree, embeds the current fork commit SHA, writes `game-library-build-info.json`, includes third-party font license records, and fails if the final output matches restricted upstream proprietary asset paths, hashes, or forbidden references.
+
+`npm run build-prod` is retained for upstream/server compatibility. Its HTML is a server-rendered template and is **not** the supported direct-CDN artifact for this fork.
+
 Do not point the game-library edition at OpenFront staging/production APIs; account, multiplayer, store, telemetry and single-player upload flows are intentionally outside this fork's local play path.
+
+The supported claim is **local single-player simulation without an OpenFront account or multiplayer servers**. A running, already-loaded match has been tested through connection loss, but a fresh page load / new match with no network has not been validated with a Service Worker or complete offline cache. Do not describe this build as fully offline.
 
 ## 🛠️ Development Tools
 

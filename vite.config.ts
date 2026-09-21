@@ -2,6 +2,7 @@ import tailwindcss from "@tailwindcss/vite";
 import fs from "fs";
 import http from "http";
 import { lookup as lookupMime } from "mrmime";
+import { execFileSync } from "node:child_process";
 import path from "path";
 import { fileURLToPath } from "url";
 import { defineConfig, loadEnv, type Plugin } from "vite";
@@ -152,6 +153,19 @@ function randomWorkerCreateProxy(numWorkers: number): Plugin {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const isProduction = mode === "production";
+  const isGameLibraryStatic =
+    isProduction &&
+    (env.GAME_LIBRARY_STATIC === "1" ||
+      process.env.GAME_LIBRARY_STATIC === "1");
+  const configuredGameLibraryCommit = [env.GIT_COMMIT, process.env.GIT_COMMIT]
+    .map((value) => value?.trim())
+    .find((value): value is string => Boolean(value));
+  const gameLibraryGitCommit = isGameLibraryStatic
+    ? (configuredGameLibraryCommit ??
+      execFileSync("git", ["rev-parse", "HEAD"], {
+        encoding: "utf8",
+      }).trim())
+    : "DEV";
   // Dev identity: the same INSTANCE_LETTER / NUM_WORKERS defaults the dev
   // server boots with (ServerEnv), so the dev-served index.html carries the
   // one-entry map production RenderHtml injects. The proxy below needs the
@@ -182,6 +196,26 @@ export default defineConfig(({ mode }) => {
     ? buildPublicAssetManifest(sourceDirs)
     : {};
   const cdnBase = env.CDN_BASE ?? "";
+  const staticGameLibraryHtmlData = {
+    assetManifest: JSON.stringify(assetManifest),
+    cdnBase: JSON.stringify(""),
+    gameEnv: JSON.stringify("prod"),
+    turnstileSiteKey: JSON.stringify(""),
+    jwtAudience: JSON.stringify("localhost"),
+    manifestHref: buildAssetUrl("manifest.json", assetManifest, ""),
+    gameplayScreenshotUrl: buildAssetUrl(
+      "images/GameplayScreenshot.png",
+      assetManifest,
+      "",
+    ),
+    backgroundImageUrl: buildAssetUrl(
+      "images/background.webp",
+      assetManifest,
+      "",
+    ),
+    gitCommit: JSON.stringify(gameLibraryGitCommit),
+  };
+
   const htmlAssetData = {
     assetManifest: JSON.stringify(assetManifest),
     cdnBase: JSON.stringify(cdnBase),
@@ -303,9 +337,8 @@ export default defineConfig(({ mode }) => {
             steamLinkAliasRedirect(),
           ]
         : []),
-      ...(isProduction
-        ? []
-        : [
+      ...(!isProduction
+        ? [
             createHtmlPlugin({
               minify: false,
               entry: "/src/client/Main.ts",
@@ -317,15 +350,28 @@ export default defineConfig(({ mode }) => {
                 },
               },
             }),
-          ]),
-      ...(isProduction
-        ? [injectCdnBaseTemplate(), syncHashedPublicAssets()]
+          ]
         : []),
+      ...(isGameLibraryStatic
+        ? [
+            createHtmlPlugin({
+              minify: false,
+              entry: "/src/client/Main.ts",
+              template: "index.html",
+              inject: { data: staticGameLibraryHtmlData },
+            }),
+          ]
+        : []),
+      ...(isProduction && !isGameLibraryStatic
+        ? [injectCdnBaseTemplate()]
+        : []),
+      ...(isProduction ? [syncHashedPublicAssets()] : []),
       tailwindcss(),
     ],
 
     define: {
       __ASSET_MANIFEST__: JSON.stringify(assetManifest),
+      __GAME_LIBRARY_STATIC__: JSON.stringify(isGameLibraryStatic),
       "process.env.WEBSOCKET_URL": JSON.stringify(
         isProduction ? "" : "localhost:3000",
       ),

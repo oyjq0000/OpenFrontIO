@@ -1,6 +1,6 @@
-import { LitElement, html } from "lit";
+import { html, LitElement } from "lit";
 import { customElement } from "lit/decorators.js";
-import { SOURCE_CODE_URL, WORKING_TITLE } from "../LocalFork";
+import { sourceCodeUrl, WORKING_TITLE } from "../LocalFork";
 
 @customElement("desktop-nav-bar")
 export class DesktopNavBar extends LitElement {
@@ -34,7 +34,7 @@ export class DesktopNavBar extends LitElement {
         </button>
         <a
           class="text-white/70 hover:text-sky-400"
-          href=${SOURCE_CODE_URL}
+          href=${sourceCodeUrl()}
           target="_blank"
           rel="noopener noreferrer"
           >Source</a

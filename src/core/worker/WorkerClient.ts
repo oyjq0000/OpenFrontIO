@@ -14,12 +14,19 @@ import { ClientID, GameStartInfo, Turn } from "../Schemas";
 import { generateID } from "../Util";
 import { WorkerMessage } from "./WorkerMessages";
 
-// Inlined as a same-origin Blob (Vite's `?worker&inline`), sidestepping the
-// cross-origin `new Worker(url)` restriction that would otherwise apply when
-// the worker bundle is served from the CDN. The dynamic import keeps the
-// ~700 KB base64 payload in its own chunk, fetched when a game starts,
-// instead of inside the main bundle.
+declare const __GAME_LIBRARY_STATIC__: boolean;
+
+// Upstream web builds inline the worker into a Blob so it can be fetched from
+// a cross-origin CDN without hitting the Worker same-origin restriction.
+// The game-library build is deliberately same-origin static hosting, so use a
+// normal Vite worker URL there. Besides avoiding an unnecessary Blob copy, it
+// gives the local distribution a directly auditable worker asset.
 async function createGameWorker(): Promise<Worker> {
+  if (__GAME_LIBRARY_STATIC__) {
+    const { default: GameWorker } = await import("./Worker.worker.ts?worker");
+    return new GameWorker();
+  }
+
   const { default: GameWorker } =
     await import("./Worker.worker.ts?worker&inline");
   return new GameWorker();
@@ -80,9 +87,28 @@ export class WorkerClient {
 
     return new Promise((resolve, reject) => {
       const messageId = generateID();
+      const timeout = setTimeout(() => {
+        if (!this.isInitialized) {
+          this.messageHandlers.delete(messageId);
+          worker.removeEventListener("error", onWorkerError);
+          reject(new Error("Worker initialization timeout"));
+        }
+      }, 60000);
+      const onWorkerError = (event: ErrorEvent) => {
+        clearTimeout(timeout);
+        this.messageHandlers.delete(messageId);
+        reject(
+          new Error(
+            `Worker initialization failed: ${event.message || "unknown worker error"}`,
+          ),
+        );
+      };
+      worker.addEventListener("error", onWorkerError, { once: true });
 
       this.messageHandlers.set(messageId, (message) => {
         if (message.type === "initialized") {
+          clearTimeout(timeout);
+          worker.removeEventListener("error", onWorkerError);
           this.isInitialized = true;
           resolve();
         }
@@ -95,13 +121,6 @@ export class WorkerClient {
         clientID: this.clientID,
         cdnBase: getCdnBase(),
       });
-
-      setTimeout(() => {
-        if (!this.isInitialized) {
-          this.messageHandlers.delete(messageId);
-          reject(new Error("Worker initialization timeout"));
-        }
-      }, 60000);
     });
   }
 

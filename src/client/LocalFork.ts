@@ -1,16 +1,58 @@
-export const LOCAL_ONLY_FORK = true;
+import { ClientEnv } from "./ClientEnv";
 
+export const LOCAL_ONLY_FORK = true;
 export const WORKING_TITLE = "Territory Conquest";
-export const ONLINE_PLAY_URL =
-  "https://www.crazygames.com/game/openfront-gsw";
-export const SOURCE_CODE_URL = "https://github.com/oyjq0000/OpenFrontIO";
-export const ATTRIBUTION_URL =
-  "https://github.com/oyjq0000/OpenFrontIO/blob/main/NOTICE.md";
+export const ONLINE_PLAY_URL = "https://www.crazygames.com/game/openfront-gsw";
+
+export const SOURCE_REPOSITORY_URL = "https://github.com/oyjq0000/OpenFrontIO";
+export const SOURCE_BRANCH = "game-library/local-solo";
+export const UPSTREAM_REPOSITORY_URL =
+  "https://github.com/openfrontio/OpenFrontIO";
+export const UPSTREAM_BASELINE_SHA = "bb8af015b515b3b717bd4d901074c5f4c16641cb";
 
 const PLAYER_NAME_KEY = "territory-conquest.player-name";
 const DEFAULT_PLAYER_NAME = "Player";
 const MAX_PLAYER_NAME_LENGTH = 20;
 
+function currentBuildRevision(): string | null {
+  try {
+    const revision = ClientEnv.gitCommit();
+    return /^[0-9a-f]{40}$/i.test(revision) ? revision : null;
+  } catch {
+    return null;
+  }
+}
+function sourceRef(): string {
+  return currentBuildRevision() ?? SOURCE_BRANCH;
+}
+
+export function sourceCodeUrl(): string {
+  return `${SOURCE_REPOSITORY_URL}/tree/${sourceRef()}`;
+}
+
+export function attributionUrl(): string {
+  return `${SOURCE_REPOSITORY_URL}/blob/${sourceRef()}/NOTICE.md`;
+}
+
+export function codeLicenseUrl(): string {
+  return `${SOURCE_REPOSITORY_URL}/blob/${sourceRef()}/LICENSE`;
+}
+
+export function licensesUrl(): string {
+  return `${SOURCE_REPOSITORY_URL}/blob/${sourceRef()}/docs/THIRD_PARTY_LICENSES.md`;
+}
+
+export function assetLicenseUrl(): string {
+  return `${SOURCE_REPOSITORY_URL}/blob/${sourceRef()}/LICENSE-ASSETS`;
+}
+
+export function upstreamBaselineUrl(): string {
+  return `${UPSTREAM_REPOSITORY_URL}/tree/${UPSTREAM_BASELINE_SHA}`;
+}
+
+export function sourceRevisionLabel(): string {
+  return (currentBuildRevision() ?? SOURCE_BRANCH).slice(0, 12);
+}
 function localStorageOrNull(): Storage | null {
   try {
     return typeof window === "undefined" ? null : window.localStorage;
@@ -35,5 +77,9 @@ export function setLocalPlayerName(value: string): string {
 }
 
 function normalizeLocalPlayerName(value: string): string {
-  return value.trim().replace(/\s+/g, " ").slice(0, MAX_PLAYER_NAME_LENGTH).trim();
+  return value
+    .trim()
+    .replace(/\s+/g, " ")
+    .slice(0, MAX_PLAYER_NAME_LENGTH)
+    .trim();
 }

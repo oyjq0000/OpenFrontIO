@@ -2,6 +2,7 @@ import { LitElement, html } from "lit";
 import { customElement } from "lit/decorators.js";
 import { adGatekeeper } from "../../AdGatekeeper";
 import { Controller } from "../../Controller";
+import { LOCAL_ONLY_FORK } from "../../LocalFork";
 import { GameView } from "../../view";
 
 const AD_TYPES = [
@@ -28,6 +29,7 @@ export class InGamePromo extends LitElement implements Controller {
   init() {}
 
   tick() {
+    if (LOCAL_ONLY_FORK) return;
     if (!this.game.inSpawnPhase()) {
       if (!this.bottomRailDestroyed) {
         this.bottomRailDestroyed = true;
@@ -118,6 +120,7 @@ export class InGamePromo extends LitElement implements Controller {
   }
 
   public hideAd(): void {
+    if (LOCAL_ONLY_FORK) return;
     if (this.adGateOff) {
       this.adGateOff();
       this.adGateOff = null;
@@ -146,7 +149,7 @@ export class InGamePromo extends LitElement implements Controller {
   }
 
   render() {
-    if (!this.shouldShow) {
+    if (LOCAL_ONLY_FORK || !this.shouldShow) {
       return html``;
     }
 

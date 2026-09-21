@@ -48,6 +48,24 @@ describe("local game-library home", () => {
     );
   });
 
+  it("exposes corresponding source, licenses and the upstream baseline", () => {
+    const labels = Array.from(page.querySelectorAll("a")).map((link) =>
+      link.textContent?.trim(),
+    );
+    expect(labels).toEqual(
+      expect.arrayContaining([
+        "Attribution",
+        "Source Code",
+        "Licenses",
+        "Upstream bb8af015b515",
+      ]),
+    );
+    const source = Array.from(page.querySelectorAll("a")).find(
+      (link) => link.textContent?.trim() === "Source Code",
+    ) as HTMLAnchorElement;
+    expect(source.href).toContain("/tree/game-library/local-solo");
+  });
+
   it("does not mount official account, shop, ranked, clan or leaderboard controls", () => {
     expect(page.textContent).not.toMatch(
       /sign in|account|shop|ranked|clan|leaderboard/i,

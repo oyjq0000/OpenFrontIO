@@ -9,6 +9,12 @@ Audit date: 2026-09-21
 
 Goal: preserve OpenFront single-player gameplay while making the playable path independent of OpenFront accounts, official APIs, multiplayer servers, CrazyGames SDK, Steam shell integrations, payments, telemetry, and proprietary assets.
 
+## Architecture decision
+
+**KEEP CURRENT BOOTSTRAP.** `Main.initialize()` enters `initializeLocalFork()` and returns before the original online boot path reaches CrazyGames initialization, server-list polling, Turnstile prefetch, Auth/profile loading, store/account setup, or telemetry. The single-player join path has explicit local branches and `Transport.joinGame()` / `rejoinGame()` return before play-token acquisition.
+
+The current feature gate is concentrated enough that adding a separate `LocalGameMain.ts` would duplicate mature initialization code without removing a demonstrated runtime dependency. The correction round therefore retained the existing Core, AI, renderer, HUD, LocalServer and local UI, and only added local distribution / boundary fixes.
+
 ## Single-player dependency graph
 
 ```text
@@ -73,35 +79,54 @@ The deterministic core, LocalServer, bots, map formats/loaders, rendering, HUD, 
 
 ## Runtime validation
 
-Browser smoke tests used a local Vite server and Chrome DevTools Protocol against the actual page, not a mocked game shell.
+Browser validation uses the production-style `npm run build-game-library` output served as plain static files. The actual-game coverage includes Spawn, expansion, AI attack, City construction, pause/resume, game speed, win handling and Quit-to-home. The strict request-level evidence is in `docs/game-library-network-audit.md`.
 
-- Default config confirmed as World / Easy / 400 bots / manual spawn.
-- Start Game to the visible spawn-selection prompt was observed at about 2.11 s on the connected development Mac.
-- 10-bot random-spawn smoke coverage included a session beyond three simulated minutes, plus separate action passes for expansion, attack, building, pause/resume and speed controls.
-- Expansion increased owned territory from 52 to 668+ tiles; a later AI attack increased outgoing attacks from 1 to 2.
-- Building a City increased owned units from 0 to 1.
-- Pause held the simulation at essentially one boundary tick; resume continued from 321 to 352 ticks in the observation window.
-- Game-speed changes were delivered through the existing EventBus / LocalServer path.
-- A minimal local match reached the win modal, displayed the modified-version result notice, and Quit returned to the local home page.
-- Play Online was clicked in the real page and opened a new browser target at the CrazyGames OpenFront URL.
+Case A reached the actual `Single-player match complete` WinModal and exited home with 138 same-origin requests and 0 external requests. Case B actively blocked OpenFront/CrazyGames hosts and still completed expand, AI attack, City build and Quit with 0 deny-list hits. Case C advanced from tick 2 to 51 during a five-second browser network outage.
 
-## Network and offline observations
+## Nations and advanced mechanisms
 
-Resource Timing reported zero cross-origin resource requests from local home load through Play Solo, map load, expansion, attack, build and win/quit smoke tests. The CrazyGames navigation occurs only after the explicit Play Online click, in a new tab.
+Bots and Nations remain distinct AI layers. `NationExecution` still composes `AiAttackBehavior`, `NationAllianceBehavior`, `NationStructureBehavior`, `NationWarshipBehavior`, `NationNukeBehavior` and `NationMIRVBehavior`. No Nation AI code was removed.
 
-With Chrome network emulation switched offline after resources were already loaded, the local game remained alive and advanced from tick 58 to 59 during a deliberately heavy observation window. This verifies that an already-loaded match does not depend on a remote API or WebSocket to continue.
+**Actual gameplay tested:** World / Impossible / 8 Nations / 20M starting gold. At tick 2 the eight Nation players existed but had not spawned. By tick 156 all eight were alive and had expanded to roughly 811–1574 tiles. All had built a SAM Launcher and City; Nunavut also had a Transport; several Nations had active outgoing attacks. This proves the local browser path actually instantiates and runs Nation AI rather than only simple Bots.
+
+**Automated test only:** advanced structure/economy, Nation alliances/betrayal, Ports/trade, Warships/counter-warships, nuclear behavior and MIRV behavior. The focused verification passed **16 test files / 201 tests**. These features remain in the deterministic Core, but the browser Nation smoke did not happen to exercise every advanced mechanism, so they are not labeled as actual gameplay observations.
+
+## Static distribution and asset audit
+
+`npm run build-game-library` is the supported direct-hosting build. It resolves the upstream server EJS placeholders at build time, embeds the current fork SHA, keeps application/Worker/assets same-origin, emits `game-library-build-info.json`, and runs a final proprietary audit.
+
+The finalizer checks:
+
+- forbidden proprietary path/name matches;
+- exact SHA-256 matches against the proprietary files at the upstream baseline;
+- forbidden textual references in distributable text assets;
+- inclusion of third-party font license/provenance records.
+
+Overpass is recorded under **SIL OFL 1.1** in `resources/fonts/OFL-Overpass.txt`. The `round_6x6_modified` bitmap font is traced to upstream commit `c5c04a8d83b593cd2e9a881c116e99a5c8b06737`, whose commit description identifies its source font as CC0; the provenance record is `resources/fonts/CC0-round-6x6.txt`. See `docs/THIRD_PARTY_LICENSES.md`.
+
+The supported product statement is **local single-player simulation without an OpenFront account or multiplayer servers**. A freshly opened page with no network has not been validated with a Service Worker/full cache, so the fork does not claim Fully Offline operation.
 
 ## Performance observations
 
-The production build contains about 623 MiB of static files, dominated by maps and other resources. The main minified JS bundle is about 2.42 MiB (619 KiB gzip) and the core Worker bundle about 668 KiB (182 KiB gzip).
+Production static build, World / Easy, connected M5 Pro Mac:
 
-World / Easy / 400 bots with random spawn successfully left the spawn phase and reached tick 15 after 15 seconds with the player alive. This is functional, but materially slower than lighter bot counts. A sampled long-lived development Chrome showed renderer RSS in the roughly 300 MiB range; because that Chrome profile contained multiple test tabs, this is not a clean single-tab memory benchmark.
+| Bots |            Start -> playable | rAF FPS (3s) |   JS heap | Chrome process-tree CPU sample | Chrome process-tree RSS |
+| ---: | ---------------------------: | -----------: | --------: | -----------------------------: | ----------------------: |
+|  100 | ~2.59 s in clean-profile run |       ~120.1 | ~74.5 MiB |                         ~36.3% |               ~1.61 GiB |
+|  400 | ~2.74 s in clean-profile run |       ~120.1 | ~81.0 MiB |                         ~41.4% |               ~1.64 GiB |
 
-Recommendation: keep 400 bots available, but consider roughly 100 bots as the game-library entry default after low-end-device validation. No balance/default change is made in this fork.
+The CPU/RSS figures are whole isolated Chrome-profile process-tree samples and include browser/GPU/renderer overhead; they are not a Core Worker-only measurement. A separate warm-profile timing showed ~0.48 s to playable for both bot counts, demonstrating that cold profile/static-cache state materially affects start time. No default bot count or game balance was changed.
 
-## Verification commands
+**Not verified on real mobile hardware.**
 
-- `npm test`: 501 files / 6532 tests passed, followed by the server phase with 69 files / 768 tests passed.
-- `npm run build-prod`: TypeScript and Vite production build passed.
-- `npm run lint`: Oxlint and ESLint passed.
+## Verification
+
+Final clean verification order: remove generated `static/`, run the complete test suite, build with `npm run build-game-library`, then lint and diff checks.
+
+- client/core suite: **502 files / 6534 tests passed**;
+- server suite: **69 files / 768 tests passed**;
+- focused Nations/advanced suite: **16 files / 201 tests passed**;
+- `npm run build-game-library`: passed;
+- final static proprietary audit: **0 path matches, 0 SHA-256 matches, 0 forbidden text references**;
+- `npm run lint`: Oxlint 0 warnings/errors; ESLint passed;
 - `git diff --check`: passed.

@@ -21,7 +21,8 @@ describe("page-footer fork attribution", () => {
 
     expect(footer.textContent).toContain("Modified version");
     expect(footer.textContent).toContain("© OpenFront and Contributors");
-    expect(footer.textContent).toContain("Open assets: CC BY-SA 4.0");
+    expect(footer.textContent).toContain("OpenFront assets: CC BY-SA 4.0");
+    expect(footer.textContent).toContain("fonts: OFL / CC0");
   });
 
   it("links to attribution and corresponding source without Steam branding", async () => {
@@ -31,8 +32,14 @@ describe("page-footer fork attribution", () => {
     expect(links.map((link) => link.textContent?.trim())).toEqual([
       "Attribution",
       "Source Code",
+      "Licenses",
+      "Upstream bb8af015b515",
     ]);
     expect(links.every((link) => link.target === "_blank")).toBe(true);
+    expect(
+      links.find((link) => link.textContent?.trim() === "Source Code")?.href,
+    ).toContain("/tree/game-library/local-solo");
+    expect(footer.textContent).toContain("Build game-library");
     expect(footer.textContent).not.toMatch(/steam/i);
   });
 });

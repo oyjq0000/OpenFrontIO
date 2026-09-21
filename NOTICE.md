@@ -19,7 +19,7 @@ The visible notice `© OpenFront and Contributors` is preserved in the applicati
 
 ## Open assets
 
-Assets under `/resources` are licensed under CC BY-SA 4.0 according to `LICENSE-ASSETS` and `LICENSING.md`. Attribution: OpenFront / OpenFront Inc. The fork preserves those license files and this notice.
+OpenFront documents `/resources` under CC BY-SA 4.0 in `LICENSE-ASSETS` and `LICENSING.md`. The fork preserves those license files and attribution. Independently licensed third-party resources inside that tree are recorded separately in `docs/THIRD_PARTY_LICENSES.md`; notably Overpass is SIL OFL 1.1 and `round_6x6_modified` is derived from a CC0 bitmap font.
 
 ## Proprietary assets
 
@@ -41,3 +41,9 @@ Assets under upstream `/proprietary` are All Rights Reserved. The local game-lib
 Corresponding source for this modified version is published at:
 
 https://github.com/oyjq0000/OpenFrontIO
+
+The game-library static build embeds its exact fork commit SHA in `BOOTSTRAP_CONFIG`, exposes a Source link pinned to that revision, and emits `game-library-build-info.json` with the upstream baseline, fork SHA, build command, package-lock SHA-256, modified-file list, license links, and asset-audit result.
+
+Reproducible build entry point: `npm run build-game-library`.
+
+This fork claims local single-player simulation without OpenFront accounts or multiplayer servers. It does not claim that a fresh page load is fully offline.
