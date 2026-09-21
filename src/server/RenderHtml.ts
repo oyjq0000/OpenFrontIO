@@ -97,7 +97,6 @@ export async function renderHtmlContent(
         ? undefined
         : JSON.stringify(ServerEnv.stripePublishableKey()),
     manifestHref: buildAssetUrl("manifest.json", assetManifest, cdnBase),
-    faviconHref: buildAssetUrl("images/Favicon.svg", assetManifest, cdnBase),
     gameplayScreenshotUrl: buildAssetUrl(
       "images/GameplayScreenshot.png",
       assetManifest,
@@ -108,12 +107,6 @@ export async function renderHtmlContent(
       assetManifest,
       cdnBase,
     ),
-    desktopLogoImageUrl: buildAssetUrl(
-      "images/OpenFront.png",
-      assetManifest,
-      cdnBase,
-    ),
-    mobileLogoImageUrl: buildAssetUrl("images/OF.png", assetManifest, cdnBase),
   });
 }
 

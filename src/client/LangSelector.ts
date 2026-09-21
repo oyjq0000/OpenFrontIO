@@ -4,6 +4,7 @@ import { assetUrl } from "../core/AssetUrls";
 import { desktopSteamLocale } from "./DesktopShell";
 import "./LanguageModal";
 import { LanguageModal } from "./LanguageModal";
+import { LOCAL_ONLY_FORK, WORKING_TITLE } from "./LocalFork";
 import { formatDebugTranslation } from "./Utils";
 
 import en from "../../resources/lang/en.json";
@@ -293,7 +294,9 @@ export class LangSelector extends LitElement {
       "tutorial-panel",
     ];
 
-    document.title = this.translateText("main.title") ?? document.title;
+    document.title = LOCAL_ONLY_FORK
+      ? WORKING_TITLE
+      : (this.translateText("main.title") ?? document.title);
 
     document.querySelectorAll("[data-i18n]").forEach((element) => {
       const key = element.getAttribute("data-i18n");

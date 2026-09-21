@@ -1,7 +1,6 @@
 import { ClientEnv } from "src/client/ClientEnv";
 import { renderNavVersion } from "src/client/GameVersion";
 import { UserMeResponse } from "../core/ApiSchemas";
-import { assetUrl } from "../core/AssetUrls";
 import { EventBus } from "../core/EventBus";
 import {
   GAME_ID_REGEX,
@@ -75,6 +74,7 @@ import "./LangSelector";
 import { LangSelector } from "./LangSelector";
 import { initLayout } from "./Layout";
 import "./LeaderboardModal";
+import { LOCAL_ONLY_FORK } from "./LocalFork";
 import "./Matchmaking";
 import { MatchmakingModal } from "./Matchmaking";
 import {
@@ -316,6 +316,42 @@ class Client {
 
   private turnstileTokenPromise: Promise<TurnstileToken> | null = null;
 
+  private initializeLocalFork(): void {
+    modalRouter.register("settings", {
+      tag: "user-setting",
+      pageId: "page-settings",
+    });
+    modalRouter.register("help", { tag: "help-modal", pageId: "page-help" });
+    modalRouter.register("single-player", {
+      tag: "single-player-modal",
+      pageId: "page-single-player",
+    });
+    modalRouter.register("troubleshooting", {
+      tag: "troubleshooting-modal",
+      pageId: "page-troubleshooting",
+    });
+
+    document.addEventListener("join-lobby", (event) => {
+      void this.handleJoinLobby(event).catch((error) => {
+        this.joinInFlight = false;
+        console.error("Failed to start local game", error);
+        throw error;
+      });
+    });
+    document.addEventListener("leave-lobby", this.handleLeaveLobby.bind(this));
+
+    document.addEventListener("start-tutorial", () => {
+      void (
+        document.querySelector("single-player-modal") as SinglePlayerModal
+      )?.startTutorial();
+    });
+
+    window.addEventListener("beforeunload", () => {
+      this.lobbyHandle?.stop(true);
+      setInGameSignal(false);
+    });
+  }
+
   async initialize(): Promise<void> {
     // FIRST, ahead of consumeCreatorCodePath() and of handleUrl() below --
     // ahead of every history write this client performs. A page served under
@@ -328,6 +364,11 @@ class Client {
     capturePagePin();
 
     flushReloadToast();
+
+    if (LOCAL_ONLY_FORK) {
+      this.initializeLocalFork();
+      return;
+    }
 
     // A store referral banner / account "copy link" hands out `/c/<code>`.
     // There's nothing to open here yet -- the code only does anything once
@@ -459,13 +500,6 @@ class Client {
     // Wait for components to render before setting version
     await customElements.whenDefined("mobile-nav-bar");
     await customElements.whenDefined("desktop-nav-bar");
-
-    const openFrontFont = new FontFace(
-      "OpenFront",
-      `url(${assetUrl("fonts/OpenFront.ttf")})`,
-    );
-    document.fonts.add(openFrontFont);
-    openFrontFont.load().catch(() => {});
 
     // The tagged version only, so a player's version reads the same across web
     // and Steam. The build's full identity -- the commit on an untagged build,
@@ -1384,36 +1418,39 @@ class Client {
     if (lobby.source !== "public") {
       this.updateJoinUrlForShare(lobby.gameID);
     }
-    // Singleplayer runs entirely locally, and the session is only used here
-    // for the HUD role — the end-of-game archive establishes its own session
-    // via getAuthHeader(). So don't let a token refresh block starting a
-    // local game (offline on Steam it waits out the 5s ticket timeout):
-    // read the cached JWT and refresh in the background instead.
     const isSingleplayer = lobby.source === "singleplayer";
-    if (isSingleplayer) {
-      void userAuth();
-    }
-    const auth = await userAuth(!isSingleplayer);
+    const localPlayer = lobby.gameStartInfo?.players[0];
+
+    const auth = isSingleplayer ? false : await userAuth();
     const playerRole = auth !== false ? (auth.claims.role ?? null) : null;
-    // Ensure the one-shot Steam name-seed has settled before reading
-    // getUsername(), mirroring how getClanCheck() runs in parallel with the
-    // handshake. whenSeeded() always resolves (falling back to the generated
-    // anon name on failure/timeout), so this can only delay, never block.
-    await this.usernameInput?.whenSeeded();
-    // One resolution for the whole join: the name and the verified badge have
-    // to describe the same decision, so they are read together rather than
-    // asked for separately.
-    const resolvedName =
-      this.usernameInput?.resolvedName() ?? fallbackPlayerName();
+
+    if (!isSingleplayer) {
+      await this.usernameInput?.whenSeeded();
+    }
+    const resolvedName = isSingleplayer
+      ? {
+          name: localPlayer?.username ?? "Player",
+          verified: false,
+        }
+      : (this.usernameInput?.resolvedName() ?? fallbackPlayerName());
+
     const newLobbyHandle = joinLobby(this.eventBus, {
       gameID: lobby.gameID,
-      cosmetics: await getPlayerCosmeticsRefs({
-        verified: resolvedName.verified,
-      }),
-      turnstileToken: await this.getTurnstileToken(lobby),
+      cosmetics: isSingleplayer
+        ? {}
+        : await getPlayerCosmeticsRefs({
+            verified: resolvedName.verified,
+          }),
+      turnstileToken: isSingleplayer
+        ? null
+        : await this.getTurnstileToken(lobby),
       playerName: resolvedName.name,
-      playerClanTag: this.usernameInput?.getClanTag() ?? null,
-      clanTagCheck: this.usernameInput?.getClanCheck(),
+      playerClanTag: isSingleplayer
+        ? null
+        : (this.usernameInput?.getClanTag() ?? null),
+      clanTagCheck: isSingleplayer
+        ? undefined
+        : this.usernameInput?.getClanCheck(),
       playerRole,
       gameStartInfo:
         lobby.gameStartInfo ??
@@ -1505,10 +1542,10 @@ class Client {
           modal.isModalOpen = false;
         }
       });
-      this.gameModeSelector.stop();
+      this.gameModeSelector?.stop();
       hideMenuChrome();
 
-      crazyGamesSDK.loadingStart();
+      if (!LOCAL_ONLY_FORK) crazyGamesSDK.loadingStart();
 
       // show when the game loads
       const startingModal = document.querySelector(
@@ -1521,7 +1558,7 @@ class Client {
 
     this.lobbyHandle.join.then(() => {
       this.joinModal?.closeWithoutLeaving();
-      this.gameModeSelector.stop();
+      this.gameModeSelector?.stop();
       incrementGamesPlayed();
 
       hideMenuChrome();
@@ -1529,8 +1566,10 @@ class Client {
       if (window.PageOS?.session?.newPageView) {
         window.PageOS.session.newPageView();
       }
-      crazyGamesSDK.loadingStop();
-      crazyGamesSDK.gameplayStart();
+      if (!LOCAL_ONLY_FORK) {
+        crazyGamesSDK.loadingStop();
+        crazyGamesSDK.gameplayStart();
+      }
       setInGameSignal(true);
 
       const lobbyIdHidden = !this.userSettings.lobbyIdVisibility();
@@ -1738,7 +1777,7 @@ class Client {
       document.dispatchEvent(new CustomEvent("menu-restored"));
     }
 
-    if (this.joinModal.isOpen()) {
+    if (this.joinModal?.isOpen()) {
       this.joinModal.close();
       if (
         event?.detail.cause === "full-lobby" ||
@@ -1756,7 +1795,7 @@ class Client {
       }
     }
 
-    crazyGamesSDK.gameplayStop();
+    if (!LOCAL_ONLY_FORK) crazyGamesSDK.gameplayStop();
   }
 
   // Puts the player back into the ranked queue. From a pre-start match
@@ -1872,16 +1911,16 @@ const bootstrap = () => {
   new Client().initialize();
   initNavigation();
 
-  // Hide elements immediately
-  hideCrazyGamesElements();
+  if (!LOCAL_ONLY_FORK) {
+    hideCrazyGamesElements();
+    setTimeout(hideCrazyGamesElements, 100);
+    setTimeout(hideCrazyGamesElements, 500);
+  }
 
-  // Also hide elements after a short delay to catch late-rendered components
-  setTimeout(hideCrazyGamesElements, 100);
-  setTimeout(hideCrazyGamesElements, 500);
-
-  // Populate the CrazyGames account buttons once the nav/top-bar have rendered
-  // (onUserMe also refreshes them after auth and on mid-session sign-in).
-  setTimeout(() => void updateCrazyGamesNavButton(), 500);
+  if (!LOCAL_ONLY_FORK) {
+    // Populate the CrazyGames account buttons once the nav/top-bar have rendered.
+    setTimeout(() => void updateCrazyGamesNavButton(), 500);
+  }
 };
 
 if (document.readyState === "loading") {

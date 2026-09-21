@@ -110,7 +110,7 @@ describe("WinModal tick win handling", () => {
     vi.unstubAllGlobals();
   });
 
-  it("emits the winner and celebrates when my team wins", async () => {
+  it("emits the winner without calling the disabled CrazyGames SDK when my team wins", async () => {
     const events = setup(
       makeGame({ winner: ["team", "Blue"], myTeam: "Blue" }),
     );
@@ -118,7 +118,7 @@ describe("WinModal tick win handling", () => {
 
     expect(events).toHaveLength(1);
     expect(events[0].winner).toEqual(["team", "Blue"]);
-    expect(crazyGamesSDK.happytime).toHaveBeenCalled();
+    expect(crazyGamesSDK.happytime).not.toHaveBeenCalled();
     await vi.waitFor(() => expect(modal!.isVisible).toBe(true));
   });
 
@@ -152,7 +152,7 @@ describe("WinModal tick win handling", () => {
     await vi.waitFor(() => expect(modal!.isVisible).toBe(true));
   });
 
-  it("celebrates when the winning client is me", async () => {
+  it("does not call the disabled CrazyGames SDK when the winning client is me", async () => {
     setup(
       makeGame({
         winner: ["player", "my-client"],
@@ -166,7 +166,7 @@ describe("WinModal tick win handling", () => {
     );
     modal!.tick();
 
-    expect(crazyGamesSDK.happytime).toHaveBeenCalled();
+    expect(crazyGamesSDK.happytime).not.toHaveBeenCalled();
     await vi.waitFor(() => expect(modal!.isVisible).toBe(true));
   });
 

@@ -1,20 +1,19 @@
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="proprietary/images/OpenFrontLogoDark.svg">
-    <source media="(prefers-color-scheme: light)" srcset="proprietary/images/OpenFrontLogo.svg">
-    <img src="proprietary/images/OpenFrontLogo.svg" alt="OpenFrontIO Logo" width="300">
-  </picture>
-</p>
+# Territory Conquest
 
-[OpenFront.io](https://openfront.io/) is an online real-time strategy game focused on territorial control and alliance building. Players compete to expand their territory, build structures, and form strategic alliances in various maps based on real-world geography.
+> Working title for a modified, unofficial local single-player edition based on the open-source OpenFront project.
 
-This is a fork/rewrite of WarFront.io. Credit to https://github.com/WarFrontIO.
+This fork is intended for a Web game library. The playable build keeps OpenFront's deterministic single-player core, maps, bots, rendering, HUD, combat, building, and local settings while disabling the official multiplayer/account/commerce ecosystem.
 
-![CI](https://github.com/openfrontio/OpenFrontIO/actions/workflows/ci.yml/badge.svg)
-[![Crowdin](https://badges.crowdin.net/openfront-mls/localized.svg)](https://crowdin.com/project/openfront-mls)
-[![CLA assistant](https://cla-assistant.io/readme/badge/openfrontio/OpenFrontIO)](https://cla-assistant.io/openfrontio/OpenFrontIO)
+- Upstream: https://github.com/openfrontio/OpenFrontIO
+- Fork baseline: `bb8af015b515b3b717bd4d901074c5f4c16641cb`
+- Source: https://github.com/oyjq0000/OpenFrontIO
+- Online multiplayer is not operated by this fork; the UI links externally to CrazyGames.
+- This project is not official OpenFront and is not endorsed by OpenFront Inc.
+
+See [NOTICE.md](NOTICE.md) for attribution and modification details.
+
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
-[![Assets: CC BY-SA 4.0](https://img.shields.io/badge/Assets-CC%20BY--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-sa/4.0/)
+[![Open assets: CC BY-SA 4.0](https://img.shields.io/badge/Assets-CC%20BY--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-sa/4.0/)
 
 ## License
 
@@ -32,13 +31,14 @@ See the [LICENSE](LICENSE) for complete requirements.
 For asset licensing, see [LICENSE-ASSETS](LICENSE-ASSETS).  
 For license history, see [LICENSING.md](LICENSING.md).
 
-## 🌟 Features
+## 🌟 Local edition features
 
-- **Real-time Strategy Gameplay**: Expand your territory and engage in strategic battles
-- **Alliance System**: Form alliances with other players for mutual defense
-- **Multiple Maps**: Play across various geographical regions including Europe, Asia, Africa, and more
-- **Resource Management**: Balance your expansion with defensive capabilities
-- **Cross-platform**: Play in any modern web browser
+- **Single Player + Bots** using OpenFront's existing deterministic core and LocalServer
+- **Multiple maps and difficulties**, including the World map
+- **Territory expansion, combat, buildings, resources, pause and game-speed controls**
+- **Local player name/settings** without an OpenFront account
+- **External Play Online link** to CrazyGames; multiplayer is not hosted by this fork
+- **Cross-platform browser gameplay** with same-origin static assets
 
 ## 📋 Prerequisites
 
@@ -50,8 +50,10 @@ For license history, see [LICENSING.md](LICENSING.md).
 1. **Clone the repository**
 
    ```bash
-   git clone https://github.com/openfrontio/OpenFrontIO.git
+   git clone https://github.com/oyjq0000/OpenFrontIO.git
    cd OpenFrontIO
+   git remote add upstream https://github.com/openfrontio/OpenFrontIO.git
+   git remote set-url --push upstream DISABLED
    ```
 
 2. **Install dependencies**
@@ -62,56 +64,25 @@ For license history, see [LICENSING.md](LICENSING.md).
 
    Do NOT use `npm install` nor `npm i` but instead use our `npm run inst`. It runs the safer `npm ci --ignore-scripts` to install dependencies exactly according to the versions in `package-lock.json` and doesn't run scripts. This can prevent being hit by a supply chain attack.
 
-## 🎮 Running the Game
+## 🎮 Running the local game
 
-### Development Mode
-
-Run both the client and server in development mode with live reloading:
+The local game path does not require the OpenFront multiplayer server or official API. Run the client only:
 
 ```bash
-npm run dev
+SKIP_BROWSER_OPEN=true npm run start:client
 ```
 
-This will:
+Vite serves the game at `http://localhost:9000/` by default. Open **Play Solo** to start the existing LocalServer + deterministic core in the browser.
 
-- Start the webpack dev server for the client
-- Launch the game server with development settings
-- Open the game in your default browser (to disable this behavior, set `SKIP_BROWSER_OPEN=true` in your environment)
+`npm run dev` and the server scripts remain in the repository for upstream compatibility, but they are not required for the game-library edition and are not part of its supported play path.
 
-### Client Only
-
-To run just the client with hot reloading:
+Production builds are created with:
 
 ```bash
-npm run start:client
+npm run build-prod
 ```
 
-### Server Only
-
-To run just the server with development settings:
-
-```bash
-npm run start:server-dev
-```
-
-### Connecting to staging or production backends
-
-Sometimes it's useful to connect to production servers when replaying a game, testing user profiles, purchases, or login flow.
-
-> To replay a production game, make sure you're on the same commit that the game you want to replay was executed on, you can find the `gitCommit` value via `https://api.openfront.io/game/[gameId]`.
-> Unfinished games cannot be replayed on localhost.
-
-To connect to staging api servers:
-
-```bash
-npm run dev:staging
-```
-
-To connect to production api servers:
-
-```bash
-npm run dev:prod
-```
+Do not point the game-library edition at OpenFront staging/production APIs; account, multiplayer, store, telemetry and single-player upload flows are intentionally outside this fork's local play path.
 
 ## 🛠️ Development Tools
 

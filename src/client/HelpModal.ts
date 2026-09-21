@@ -11,6 +11,7 @@ import { UserSettings } from "../core/game/UserSettings";
 import { BaseModal } from "./components/BaseModal";
 import "./components/Difficulties";
 import { modalHeader } from "./components/ui/ModalHeader";
+import { LOCAL_ONLY_FORK } from "./LocalFork";
 import { Platform } from "./Platform";
 import { TroubleshootingModal } from "./TroubleshootingModal";
 
@@ -159,7 +160,9 @@ export class HelpModal extends BaseModal {
                   : html`<iframe
                       id="tutorial-video-iframe"
                       class="absolute top-0 left-0 w-full h-full"
-                      src="${this.isModalOpen ? TUTORIAL_VIDEO_URL : ""}"
+                      src="${this.isModalOpen && !LOCAL_ONLY_FORK
+                        ? TUTORIAL_VIDEO_URL
+                        : "about:blank"}"
                       title="${translateText(
                         "help_modal.video_tutorial_title",
                       )}"
@@ -1299,14 +1302,16 @@ export class HelpModal extends BaseModal {
     this.keybinds = this.getKeybinds();
     // Restore the video src when modal opens
     if (this.videoIframe) {
-      this.videoIframe.src = TUTORIAL_VIDEO_URL;
+      this.videoIframe.src = LOCAL_ONLY_FORK
+        ? "about:blank"
+        : TUTORIAL_VIDEO_URL;
     }
   }
 
   protected onClose(): void {
     // Clear the iframe src to stop video playback
     if (this.videoIframe) {
-      this.videoIframe.src = "";
+      this.videoIframe.src = "about:blank";
     }
     // The desktop <video> keeps its src -- the file is local, so unlike the
     // YouTube iframe there is nothing to unload; pausing is enough.

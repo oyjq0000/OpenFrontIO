@@ -86,6 +86,7 @@ describe("LocalServer replay speed", () => {
       },
     );
     server.start();
+    server.activateTurnLoop();
 
     vi.advanceTimersByTime(1000);
     const atNormalSpeed = turns;

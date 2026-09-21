@@ -26,6 +26,7 @@ import {
 } from "../../Cosmetics";
 import { crazyGamesSDK } from "../../CrazyGamesSDK";
 import { isDesktopShell } from "../../DesktopShell";
+import { LOCAL_ONLY_FORK } from "../../LocalFork";
 import { Platform } from "../../Platform";
 import { PlaySoundEffectEvent } from "../../sound/Sounds";
 import { steamSDK } from "../../SteamSDK";
@@ -111,6 +112,17 @@ export class WinModal extends LitElement implements Controller {
   }
 
   innerHtml() {
+    if (LOCAL_ONLY_FORK) {
+      return html`
+        <div class="text-center mb-6 bg-black/30 p-5 rounded-sm">
+          <p class="text-white/85">
+            Single-player match complete. This local edition does not upload
+            results, achievements, or player data.
+          </p>
+        </div>
+      `;
+    }
+
     // The Steam desktop build has nothing to wishlist — fall through to the
     // other promos so the box is never empty.
     const canWishlist = !steamSDK.isOnSteam();
@@ -262,11 +274,15 @@ export class WinModal extends LitElement implements Controller {
   }
 
   async show() {
-    crazyGamesSDK.gameplayStop();
     this.isRankedGame =
+      !LOCAL_ONLY_FORK &&
       this.game.config().gameConfig().rankedType !== undefined;
     this.isVisible = true;
     this.requestUpdate();
+
+    if (LOCAL_ONLY_FORK) return;
+
+    crazyGamesSDK.gameplayStop();
     try {
       await this.loadPatternContent();
     } catch (error) {
@@ -353,7 +369,7 @@ export class WinModal extends LitElement implements Controller {
         if (wu.winner[1] === this.game.myPlayer()?.team()) {
           this._title = translateText("win_modal.your_team");
           this.isWin = true;
-          crazyGamesSDK.happytime();
+          if (!LOCAL_ONLY_FORK) crazyGamesSDK.happytime();
         } else {
           this._title = translateText("win_modal.other_team", {
             team: wu.winner[1],
@@ -386,7 +402,7 @@ export class WinModal extends LitElement implements Controller {
         ) {
           this._title = translateText("win_modal.you_won");
           this.isWin = true;
-          crazyGamesSDK.happytime();
+          if (!LOCAL_ONLY_FORK) crazyGamesSDK.happytime();
         } else {
           this._title = translateText("win_modal.other_won", {
             player: winner.displayName(),
