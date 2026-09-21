@@ -61,6 +61,10 @@ async function main(): Promise<void> {
     cwd: root,
     encoding: "utf8",
   }).trim();
+  for (const required of ["asset-hashes.json", "core-version.txt"]) {
+    await fs.access(path.join(staticDir, required));
+  }
+
   const indexHtml = await fs.readFile(
     path.join(staticDir, "index.html"),
     "utf8",
@@ -178,8 +182,63 @@ async function main(): Promise<void> {
     path.join(staticDir, "game-library-build-info.json"),
     `${JSON.stringify(buildInfo, null, 2)}\n`,
   );
+
+  // Nothing may write to static/ after this pass. The final audit includes
+  // asset-hashes.json, core-version.txt and game-library-build-info.json.
+  const finalFiles = (await walk(staticDir)).sort();
+  for (const required of [
+    "asset-hashes.json",
+    "core-version.txt",
+    "game-library-build-info.json",
+  ]) {
+    if (!finalFiles.includes(required)) {
+      throw new Error(`missing final game-library artifact: ${required}`);
+    }
+  }
+
+  const finalPathMatches = finalFiles.filter((rel) => {
+    const lower = rel.toLowerCase();
+    return (
+      lower.includes("proprietary/") || forbiddenNames.has(path.basename(lower))
+    );
+  });
+  const finalHashMatches: string[] = [];
+  const finalContentMatches: string[] = [];
+  for (const rel of finalFiles) {
+    const full = path.join(staticDir, rel);
+    const stat = await fs.stat(full);
+    const candidateHashes = forbiddenBySize.get(stat.size);
+    if (candidateHashes) {
+      const data = await fs.readFile(full);
+      if (candidateHashes.has(sha256(data))) finalHashMatches.push(rel);
+    }
+    // game-library-build-info.json is the audit report itself and records
+    // deleted proprietary paths in its modified-files evidence. Keep scanning
+    // its path/hash, but do not treat that audit metadata as a runtime
+    // proprietary asset reference.
+    if (
+      rel !== "game-library-build-info.json" &&
+      TEXT_EXTENSIONS.has(path.extname(rel)) &&
+      stat.size < 10 * 1024 * 1024
+    ) {
+      const text = await fs.readFile(full, "utf8");
+      if (FORBIDDEN_TEXT.some((needle) => text.includes(needle))) {
+        finalContentMatches.push(rel);
+      }
+    }
+  }
+  if (
+    finalPathMatches.length ||
+    finalHashMatches.length ||
+    finalContentMatches.length
+  ) {
+    throw new Error(
+      `final proprietary audit failed: ${JSON.stringify({ finalPathMatches, finalHashMatches, finalContentMatches })}`,
+    );
+  }
+
   console.log(
-    `game-library build: ${files.length + 1} files; fork ${head.slice(0, 12)}; proprietary matches 0`,
+    `game-library build: ${finalFiles.length} files; fork ${head.slice(0, 12)}; final proprietary matches 0`,
   );
 }
 

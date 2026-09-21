@@ -5,7 +5,7 @@ export const WORKING_TITLE = "Territory Conquest";
 export const ONLINE_PLAY_URL = "https://www.crazygames.com/game/openfront-gsw";
 
 export const SOURCE_REPOSITORY_URL = "https://github.com/oyjq0000/OpenFrontIO";
-export const SOURCE_BRANCH = "game-library/local-solo";
+export const SOURCE_BRANCH = "main";
 export const UPSTREAM_REPOSITORY_URL =
   "https://github.com/openfrontio/OpenFrontIO";
 export const UPSTREAM_BASELINE_SHA = "bb8af015b515b3b717bd4d901074c5f4c16641cb";

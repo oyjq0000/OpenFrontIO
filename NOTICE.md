@@ -23,7 +23,7 @@ OpenFront documents `/resources` under CC BY-SA 4.0 in `LICENSE-ASSETS` and `LIC
 
 ## Proprietary assets
 
-Assets under upstream `/proprietary` are All Rights Reserved. The local game-library build excludes that directory entirely. The proprietary font, logos/images, and music/sound files present at the fork baseline were removed from this fork; only `proprietary/LICENSE` is retained as a license record.
+Assets under upstream `/proprietary` are All Rights Reserved. Proprietary runtime assets were removed from the current source tree and are excluded from the supported game-library build. `proprietary/LICENSE` is retained as an upstream license record. The upstream baseline remains referenced by commit SHA and Git history is not rewritten.
 
 ## Fork modifications
 

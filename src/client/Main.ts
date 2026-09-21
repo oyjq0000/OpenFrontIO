@@ -75,6 +75,7 @@ import { LangSelector } from "./LangSelector";
 import { initLayout } from "./Layout";
 import "./LeaderboardModal";
 import { LOCAL_ONLY_FORK } from "./LocalFork";
+import { recoverLocalJoinUi } from "./LocalJoinRecovery";
 import "./Matchmaking";
 import { MatchmakingModal } from "./Matchmaking";
 import {
@@ -300,6 +301,7 @@ class Client {
   // like a pristine homepage and a /users/@me landing in it would open a
   // confirm over a game that is starting.
   private joinInFlight = false;
+  private localSingleplayerActive = false;
 
   // Presence inputs. A private, hosted or matchmade JoinLobbyEvent carries
   // nothing but the game id, so the server's lobby_info is the only place the
@@ -333,9 +335,11 @@ class Client {
 
     document.addEventListener("join-lobby", (event) => {
       void this.handleJoinLobby(event).catch((error) => {
+        this.resetPresenceToMenu();
         this.joinInFlight = false;
-        console.error("Failed to start local game", error);
-        throw error;
+        this.localSingleplayerActive = false;
+        this.currentUrl = null;
+        recoverLocalJoinUi(error);
       });
     });
     document.addEventListener("leave-lobby", this.handleLeaveLobby.bind(this));
@@ -1414,11 +1418,13 @@ class Client {
         lobbyInfo: lobby.publicLobbyInfo,
       });
     }
-    // Only update URL immediately for private lobbies, not public ones
-    if (lobby.source !== "public") {
+    const isSingleplayer = lobby.source === "singleplayer";
+    // Local games have no multiplayer server route and no shareable lobby id.
+    // Keep the browser on the home pathname instead of manufacturing a
+    // /game/<local-id> URL that cannot be resumed or joined by anyone else.
+    if (lobby.source !== "public" && !isSingleplayer) {
       this.updateJoinUrlForShare(lobby.gameID);
     }
-    const isSingleplayer = lobby.source === "singleplayer";
     const localPlayer = lobby.gameStartInfo?.players[0];
 
     const auth = isSingleplayer ? false : await userAuth();
@@ -1476,6 +1482,7 @@ class Client {
     }
 
     this.lobbyHandle = newLobbyHandle;
+    this.localSingleplayerActive = isSingleplayer;
     // From here lobbyHandle is the guard.
     this.joinInFlight = false;
 
@@ -1572,30 +1579,33 @@ class Client {
       }
       setInGameSignal(true);
 
-      const lobbyIdHidden = !this.userSettings.lobbyIdVisibility();
-      if (isReplayShellHost(window.location.hostname)) {
-        // Keep the canonical replay URL (replay.<domain>/<gameId>): the
-        // /game/<id> shape and the #refresh trampoline only exist on the
-        // game-server origin, so rewriting here would leave a URL that 404s
-        // when reloaded or shared (see VersionedReplay.ts).
-        history.pushState(null, "", window.location.pathname);
-      } else {
-        // Ensure there's a homepage entry in history before adding the lobby entry
-        if (window.location.hash === "" || window.location.hash === "#") {
-          history.replaceState(null, "", window.location.origin + "#refresh");
+      if (!isSingleplayer) {
+        const lobbyIdHidden = !this.userSettings.lobbyIdVisibility();
+        if (isReplayShellHost(window.location.hostname)) {
+          // Keep the canonical replay URL (replay.<domain>/<gameId>): the
+          // /game/<id> shape and the #refresh trampoline only exist on the
+          // game-server origin, so rewriting here would leave a URL that 404s
+          // when reloaded or shared (see VersionedReplay.ts).
+          history.pushState(null, "", window.location.pathname);
+        } else {
+          // Ensure there's a homepage entry in history before adding the lobby entry
+          if (window.location.hash === "" || window.location.hash === "#") {
+            history.replaceState(null, "", window.location.origin + "#refresh");
+          }
+          history.pushState(
+            null,
+            "",
+            currentPagePath(
+              lobbyIdHidden
+                ? "/streamer-mode"
+                : `${ClientEnv.gamePath(lobby.gameID)}?live`,
+            ),
+          );
         }
-        history.pushState(
-          null,
-          "",
-          currentPagePath(
-            lobbyIdHidden
-              ? "/streamer-mode"
-              : `${ClientEnv.gamePath(lobby.gameID)}?live`,
-          ),
-        );
       }
 
-      // Store current URL for popstate confirmation
+      // Single-player intentionally stays at the local home URL. Multiplayer
+      // retains the existing share/history behavior above.
       this.currentUrl = window.location.href;
     });
   }
@@ -1721,6 +1731,9 @@ class Client {
   }
 
   private async handleLeaveLobby(event?: CustomEvent) {
+    const leavingLocalSingleplayer = this.localSingleplayerActive;
+    this.localSingleplayerActive = false;
+
     // Above the lobbyHandle guard on purpose. Presence goes to "lobby" when
     // the join starts, but lobbyHandle is only assigned once the handshake
     // finishes; a modal closed during that window dispatches leave-lobby and
@@ -1775,6 +1788,10 @@ class Client {
       // listeners down at prestart and needs them back, or the menu theme is
       // silent for the rest of the session.
       document.dispatchEvent(new CustomEvent("menu-restored"));
+    }
+
+    if (leavingLocalSingleplayer) {
+      window.showPage?.("page-play");
     }
 
     if (this.joinModal?.isOpen()) {

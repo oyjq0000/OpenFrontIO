@@ -63,7 +63,7 @@ describe("local game-library home", () => {
     const source = Array.from(page.querySelectorAll("a")).find(
       (link) => link.textContent?.trim() === "Source Code",
     ) as HTMLAnchorElement;
-    expect(source.href).toContain("/tree/game-library/local-solo");
+    expect(source.href).toContain("/tree/main");
   });
 
   it("does not mount official account, shop, ranked, clan or leaderboard controls", () => {

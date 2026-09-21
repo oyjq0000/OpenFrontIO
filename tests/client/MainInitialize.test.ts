@@ -49,6 +49,41 @@ describe("local-only Main bootstrap", () => {
     );
   });
 
+  it("recovers local join failures without rethrowing an unhandled rejection", () => {
+    const start = mainSource.indexOf("private initializeLocalFork");
+    const end = mainSource.indexOf("async initialize()", start);
+    const localBlock = mainSource.slice(start, end);
+
+    expect(localBlock).toContain("recoverLocalJoinUi(error);");
+    expect(localBlock).toContain("this.joinInFlight = false;");
+    expect(localBlock).not.toContain("throw error;");
+  });
+
+  it("does not rewrite single-player games to multiplayer-style routes", () => {
+    expect(mainSource).toContain(
+      'if (lobby.source !== "public" && !isSingleplayer) {',
+    );
+
+    const joinResolved = mainSource.indexOf("this.lobbyHandle.join.then");
+    const nextMethod = mainSource.indexOf("private emitPresence", joinResolved);
+    const resolvedBlock = mainSource.slice(joinResolved, nextMethod);
+    expect(resolvedBlock).toContain("if (!isSingleplayer) {");
+    expect(resolvedBlock).toContain("ClientEnv.gamePath(lobby.gameID)");
+  });
+
+  it("restores the home pathname on quit", () => {
+    const leaveStart = mainSource.indexOf("private async handleLeaveLobby");
+    const leaveEnd = mainSource.indexOf(
+      "private handleMatchmakingRequeue",
+      leaveStart,
+    );
+    const leaveBlock = mainSource.slice(leaveStart, leaveEnd);
+
+    expect(leaveBlock).toContain('history.replaceState(null, "", "/");');
+    expect(leaveBlock).toContain("if (leavingLocalSingleplayer) {");
+    expect(leaveBlock).toContain('window.showPage?.("page-play");');
+  });
+
   it("does not load official SDK, auth challenge, ads or telemetry scripts", () => {
     expect(indexSource).not.toMatch(/sdk\.crazygames\.com/i);
     expect(indexSource).not.toMatch(/challenges\.cloudflare\.com/i);

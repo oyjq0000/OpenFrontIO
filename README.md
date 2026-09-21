@@ -39,7 +39,7 @@ For third-party fonts and other independently licensed resources, see [docs/THIR
 - **Territory expansion, combat, buildings, resources, pause and game-speed controls**
 - **Local player name/settings** without an OpenFront account
 - **External Play Online link** to CrazyGames; multiplayer is not hosted by this fork
-- **Cross-platform browser gameplay** with same-origin static assets
+- **Browser-based local gameplay** with same-origin static assets; real mobile hardware is not yet verified
 
 ## 📋 Prerequisites
 

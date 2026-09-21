@@ -38,8 +38,8 @@ describe("page-footer fork attribution", () => {
     expect(links.every((link) => link.target === "_blank")).toBe(true);
     expect(
       links.find((link) => link.textContent?.trim() === "Source Code")?.href,
-    ).toContain("/tree/game-library/local-solo");
-    expect(footer.textContent).toContain("Build game-library");
+    ).toContain("/tree/main");
+    expect(footer.textContent).toContain("Build main");
     expect(footer.textContent).not.toMatch(/steam/i);
   });
 });
