@@ -10,8 +10,7 @@ export const UPSTREAM_REPOSITORY_URL =
   "https://github.com/openfrontio/OpenFrontIO";
 export const UPSTREAM_BASELINE_SHA = "bb8af015b515b3b717bd4d901074c5f4c16641cb";
 
-const PLAYER_NAME_KEY = "realmspan.player-name";
-const LEGACY_PLAYER_NAME_KEY = "territory-conquest.player-name";
+const PLAYER_NAME_KEY = "player-name";
 const DEFAULT_PLAYER_NAME = "Player";
 const MAX_PLAYER_NAME_LENGTH = 20;
 
@@ -67,15 +66,6 @@ export function getLocalPlayerName(): string {
   const stored = storage?.getItem(PLAYER_NAME_KEY) ?? "";
   const normalized = normalizeLocalPlayerName(stored);
   if (normalized.length > 0) return normalized;
-
-  const legacy = normalizeLocalPlayerName(
-    storage?.getItem(LEGACY_PLAYER_NAME_KEY) ?? "",
-  );
-  if (legacy.length > 0) {
-    storage?.setItem(PLAYER_NAME_KEY, legacy);
-    storage?.removeItem(LEGACY_PLAYER_NAME_KEY);
-    return legacy;
-  }
 
   storage?.setItem(PLAYER_NAME_KEY, DEFAULT_PLAYER_NAME);
   return DEFAULT_PLAYER_NAME;
