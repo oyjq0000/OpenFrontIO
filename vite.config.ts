@@ -27,6 +27,34 @@ import {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+function gameLibraryBasePath(value?: string): string {
+  const configured = value?.trim() ?? "";
+  const raw = configured === "" ? "/" : configured;
+  if (
+    !raw.startsWith("/") ||
+    !raw.endsWith("/") ||
+    raw.includes("..") ||
+    raw.includes("?") ||
+    raw.includes("#")
+  ) {
+    throw new Error(
+      `GAME_LIBRARY_BASE_PATH must be an absolute directory path ending in "/", got ${JSON.stringify(raw)}`,
+    );
+  }
+  return raw.replace(/\/+/g, "/");
+}
+
+function prefixAssetManifest(
+  manifest: AssetManifest,
+  basePath: string,
+): AssetManifest {
+  if (basePath === "/") return manifest;
+  const prefix = basePath.slice(0, -1);
+  return Object.fromEntries(
+    Object.entries(manifest).map(([key, url]) => [key, `${prefix}${url}`]),
+  );
+}
+
 // Dev-only: resources/public/ is served at the site root, as the build copies
 // it into static/. Vite's publicDir (resources/) would put it under /public/.
 function serveRootPublicDir(publicDir: string): Plugin {
@@ -157,6 +185,11 @@ export default defineConfig(({ mode }) => {
     isProduction &&
     (env.GAME_LIBRARY_STATIC === "1" ||
       process.env.GAME_LIBRARY_STATIC === "1");
+  const gameLibraryBase = isGameLibraryStatic
+    ? gameLibraryBasePath(
+        env.GAME_LIBRARY_BASE_PATH ?? process.env.GAME_LIBRARY_BASE_PATH,
+      )
+    : "/";
   const configuredGameLibraryCommit = [env.GIT_COMMIT, process.env.GIT_COMMIT]
     .map((value) => value?.trim())
     .find((value): value is string => Boolean(value));
@@ -195,22 +228,26 @@ export default defineConfig(({ mode }) => {
   const assetManifest: AssetManifest = isProduction
     ? buildPublicAssetManifest(sourceDirs)
     : {};
+  const gameLibraryAssetManifest = isGameLibraryStatic
+    ? prefixAssetManifest(assetManifest, gameLibraryBase)
+    : assetManifest;
   const cdnBase = env.CDN_BASE ?? "";
   const staticGameLibraryHtmlData = {
-    assetManifest: JSON.stringify(assetManifest),
+    assetManifest: JSON.stringify(gameLibraryAssetManifest),
     cdnBase: JSON.stringify(""),
     gameEnv: JSON.stringify("prod"),
     turnstileSiteKey: JSON.stringify(""),
     jwtAudience: JSON.stringify("localhost"),
-    manifestHref: buildAssetUrl("manifest.json", assetManifest, ""),
+    faviconHref: `${gameLibraryBase}realmspan-mark.svg`,
+    manifestHref: buildAssetUrl("manifest.json", gameLibraryAssetManifest, ""),
     gameplayScreenshotUrl: buildAssetUrl(
       "images/GameplayScreenshot.png",
-      assetManifest,
+      gameLibraryAssetManifest,
       "",
     ),
     backgroundImageUrl: buildAssetUrl(
       "images/background.webp",
-      assetManifest,
+      gameLibraryAssetManifest,
       "",
     ),
     gitCommit: JSON.stringify(gameLibraryGitCommit),
@@ -227,6 +264,7 @@ export default defineConfig(({ mode }) => {
     ),
     jwtAudience: JSON.stringify(env.DOMAIN ?? "localhost"),
     instanceId: JSON.stringify(env.INSTANCE_ID ?? "DEV_ID"),
+    faviconHref: "/realmspan-mark.svg",
     manifestHref: buildAssetUrl("manifest.json", assetManifest, cdnBase),
     gameplayScreenshotUrl: buildAssetUrl(
       "images/GameplayScreenshot.png",
@@ -276,7 +314,12 @@ export default defineConfig(({ mode }) => {
         if (!fileName.startsWith("assets/")) continue;
         assetManifest[fileName] = `/${fileName}`;
       }
-      writePublicAssetManifest(outDir, assetManifest);
+      writePublicAssetManifest(
+        outDir,
+        isGameLibraryStatic
+          ? prefixAssetManifest(assetManifest, gameLibraryBase)
+          : assetManifest,
+      );
     },
   });
 
@@ -319,7 +362,7 @@ export default defineConfig(({ mode }) => {
       ],
     },
     root: "./",
-    base: "/",
+    base: gameLibraryBase,
     publicDir: isProduction ? false : "resources",
 
     resolve: {
@@ -370,7 +413,7 @@ export default defineConfig(({ mode }) => {
     ],
 
     define: {
-      __ASSET_MANIFEST__: JSON.stringify(assetManifest),
+      __ASSET_MANIFEST__: JSON.stringify(gameLibraryAssetManifest),
       __GAME_LIBRARY_STATIC__: JSON.stringify(isGameLibraryStatic),
       "process.env.WEBSOCKET_URL": JSON.stringify(
         isProduction ? "" : "localhost:3000",
