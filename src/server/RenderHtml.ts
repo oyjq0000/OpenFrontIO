@@ -96,6 +96,7 @@ export async function renderHtmlContent(
       ServerEnv.stripePublishableKey() === undefined
         ? undefined
         : JSON.stringify(ServerEnv.stripePublishableKey()),
+    faviconHref: "/realmspan-mark.svg",
     manifestHref: buildAssetUrl("manifest.json", assetManifest, cdnBase),
     gameplayScreenshotUrl: buildAssetUrl(
       "images/GameplayScreenshot.png",

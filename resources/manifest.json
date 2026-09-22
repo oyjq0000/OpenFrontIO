@@ -7,6 +7,6 @@
   "name": "Realmspan",
   "short_name": "Realmspan",
   "description": "Modified local single-player edition based on the open-source OpenFront project.",
-  "start_url": "/",
-  "id": "/"
+  "start_url": "../",
+  "id": "../"
 }
