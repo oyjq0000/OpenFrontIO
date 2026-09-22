@@ -2,6 +2,7 @@ import { html, LitElement } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import {
   attributionUrl,
+  GAME_TITLE,
   getLocalPlayerName,
   licensesUrl,
   ONLINE_PLAY_URL,
@@ -9,7 +10,6 @@ import {
   sourceCodeUrl,
   UPSTREAM_BASELINE_SHA,
   upstreamBaselineUrl,
-  WORKING_TITLE,
 } from "../LocalFork";
 
 @customElement("play-page")
@@ -55,13 +55,28 @@ export class PlayPage extends LitElement {
           ☰
         </button>
         <div class="space-y-3">
+          <svg
+            class="mx-auto h-16 w-16 text-sky-400"
+            viewBox="0 0 64 64"
+            fill="none"
+            aria-label="Realmspan mark"
+            role="img"
+          >
+            <path
+              d="M8 34C14 17 23 10 32 10s18 7 24 24c-7 13-15 20-24 20S15 47 8 34Z"
+              stroke="currentColor"
+              stroke-width="4"
+            />
+            <path d="M20 32h24" stroke="currentColor" stroke-width="4" />
+            <path d="m32 22 8 10-8 10-8-10 8-10Z" fill="currentColor" />
+          </svg>
           <p
             class="text-xs font-bold uppercase tracking-[0.28em] text-white/45"
           >
             Local single-player edition
           </p>
           <h1 class="text-4xl font-black tracking-tight text-white sm:text-6xl">
-            ${WORKING_TITLE}
+            ${GAME_TITLE}
           </h1>
           <p class="text-sm text-white/60 sm:text-base">
             Based on the open-source OpenFront project. This is a modified,

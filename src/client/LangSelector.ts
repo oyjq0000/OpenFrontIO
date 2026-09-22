@@ -4,7 +4,7 @@ import { assetUrl } from "../core/AssetUrls";
 import { desktopSteamLocale } from "./DesktopShell";
 import "./LanguageModal";
 import { LanguageModal } from "./LanguageModal";
-import { LOCAL_ONLY_FORK, WORKING_TITLE } from "./LocalFork";
+import { GAME_TITLE, LOCAL_ONLY_FORK } from "./LocalFork";
 import { formatDebugTranslation } from "./Utils";
 
 import en from "../../resources/lang/en.json";
@@ -295,7 +295,7 @@ export class LangSelector extends LitElement {
     ];
 
     document.title = LOCAL_ONLY_FORK
-      ? WORKING_TITLE
+      ? GAME_TITLE
       : (this.translateText("main.title") ?? document.title);
 
     document.querySelectorAll("[data-i18n]").forEach((element) => {

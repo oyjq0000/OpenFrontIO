@@ -24,7 +24,7 @@ describe("local-only navigation", () => {
     ).map((el) => el.dataset.page);
 
     expect(pages).toEqual(["page-play", "page-settings", "page-help"]);
-    expect(bar.textContent).toContain("Territory Conquest");
+    expect(bar.textContent).toContain("Realmspan");
     expect(bar.textContent).not.toMatch(
       /account|store|clan|leaderboard|ranked/i,
     );

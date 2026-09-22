@@ -1,7 +1,7 @@
 import { ClientEnv } from "./ClientEnv";
 
 export const LOCAL_ONLY_FORK = true;
-export const WORKING_TITLE = "Territory Conquest";
+export const GAME_TITLE = "Realmspan";
 export const ONLINE_PLAY_URL = "https://www.crazygames.com/game/openfront-gsw";
 
 export const SOURCE_REPOSITORY_URL = "https://github.com/oyjq0000/OpenFrontIO";
@@ -10,7 +10,8 @@ export const UPSTREAM_REPOSITORY_URL =
   "https://github.com/openfrontio/OpenFrontIO";
 export const UPSTREAM_BASELINE_SHA = "bb8af015b515b3b717bd4d901074c5f4c16641cb";
 
-const PLAYER_NAME_KEY = "territory-conquest.player-name";
+const PLAYER_NAME_KEY = "realmspan.player-name";
+const LEGACY_PLAYER_NAME_KEY = "territory-conquest.player-name";
 const DEFAULT_PLAYER_NAME = "Player";
 const MAX_PLAYER_NAME_LENGTH = 20;
 
@@ -66,6 +67,16 @@ export function getLocalPlayerName(): string {
   const stored = storage?.getItem(PLAYER_NAME_KEY) ?? "";
   const normalized = normalizeLocalPlayerName(stored);
   if (normalized.length > 0) return normalized;
+
+  const legacy = normalizeLocalPlayerName(
+    storage?.getItem(LEGACY_PLAYER_NAME_KEY) ?? "",
+  );
+  if (legacy.length > 0) {
+    storage?.setItem(PLAYER_NAME_KEY, legacy);
+    storage?.removeItem(LEGACY_PLAYER_NAME_KEY);
+    return legacy;
+  }
+
   storage?.setItem(PLAYER_NAME_KEY, DEFAULT_PLAYER_NAME);
   return DEFAULT_PLAYER_NAME;
 }
