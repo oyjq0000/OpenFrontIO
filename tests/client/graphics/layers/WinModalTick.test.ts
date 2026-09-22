@@ -298,4 +298,41 @@ describe("WinModal tick win handling", () => {
 
     expect(syncAchievements).not.toHaveBeenCalled();
   });
+
+  it("emits the QuestHub result from the normal local win-update path once", () => {
+    setup(
+      makeGame({
+        winner: ["player", "my-client"],
+        myClientID: "my-client",
+        gameType: GameType.Singleplayer,
+        winnerPlayer: {
+          isPlayer: () => true,
+          clientID: () => "my-client",
+          displayName: () => "Me",
+        },
+      }),
+    );
+    const results: unknown[] = [];
+    const listener = (event: Event) =>
+      results.push((event as CustomEvent).detail);
+    window.addEventListener("questhub:submit-result", listener);
+    try {
+      modal!.tick();
+      modal!.tick();
+    } finally {
+      window.removeEventListener("questhub:submit-result", listener);
+    }
+
+    expect(results).toEqual([
+      {
+        version: 1,
+        kind: "ending",
+        primary: {
+          key: "outcome",
+          label: "Outcome",
+          value: "Victory",
+        },
+      },
+    ]);
+  });
 });

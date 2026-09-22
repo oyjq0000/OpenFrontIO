@@ -39,6 +39,7 @@ export class WinModal extends LitElement implements Controller {
   public eventBus: EventBus;
 
   private hasShownDeathModal = false;
+  private localResultEmitted = false;
 
   @state()
   isVisible = false;
@@ -117,7 +118,7 @@ export class WinModal extends LitElement implements Controller {
         <div class="text-center mb-6 bg-black/30 p-5 rounded-sm">
           <p class="text-white/85">
             Single-player match complete. This local edition does not upload
-            results, achievements, or player data.
+            accounts, achievements, or player data to OpenFront services.
           </p>
         </div>
       `;
@@ -280,7 +281,10 @@ export class WinModal extends LitElement implements Controller {
     this.isVisible = true;
     this.requestUpdate();
 
-    if (LOCAL_ONLY_FORK) return;
+    if (LOCAL_ONLY_FORK) {
+      this.emitLocalResult();
+      return;
+    }
 
     crazyGamesSDK.gameplayStop();
     try {
@@ -290,6 +294,24 @@ export class WinModal extends LitElement implements Controller {
       return;
     }
     this.requestUpdate();
+  }
+
+  private emitLocalResult(): void {
+    if (this.localResultEmitted) return;
+    this.localResultEmitted = true;
+    window.dispatchEvent(
+      new CustomEvent("questhub:submit-result", {
+        detail: {
+          version: 1,
+          kind: "ending",
+          primary: {
+            key: "outcome",
+            label: "Outcome",
+            value: this.isWin ? "Victory" : "Defeat",
+          },
+        },
+      }),
+    );
   }
 
   hide() {

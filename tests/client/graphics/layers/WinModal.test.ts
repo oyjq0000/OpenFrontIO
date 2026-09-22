@@ -199,3 +199,76 @@ describe("WinModal pattern promotion", () => {
     }
   });
 });
+
+describe("WinModal Realmspan result bridge", () => {
+  let modal: WinModal | undefined;
+
+  afterEach(() => {
+    modal?.remove();
+    modal = undefined;
+  });
+
+  function createLocalModal(isWin: boolean): WinModal {
+    const element = document.createElement("win-modal") as WinModal;
+    Object.assign(element as unknown as Record<string, unknown>, {
+      isWin,
+      game: {
+        config: () => ({
+          gameConfig: () => ({ rankedType: undefined }),
+        }),
+        myPlayer: () => ({
+          isAlive: () => isWin,
+        }),
+      },
+    });
+    document.body.appendChild(element);
+    return element;
+  }
+
+  it("emits a minimal RunResultV1-compatible victory result once", async () => {
+    modal = createLocalModal(true);
+    const results: unknown[] = [];
+    const listener = (event: Event) => {
+      results.push((event as CustomEvent).detail);
+    };
+    window.addEventListener("questhub:submit-result", listener);
+    try {
+      await modal.show();
+      await modal.show();
+    } finally {
+      window.removeEventListener("questhub:submit-result", listener);
+    }
+
+    expect(results).toEqual([
+      {
+        version: 1,
+        kind: "ending",
+        primary: {
+          key: "outcome",
+          label: "Outcome",
+          value: "Victory",
+        },
+      },
+    ]);
+  });
+
+  it("emits defeat without account or identity fields", async () => {
+    modal = createLocalModal(false);
+    let result: unknown;
+    const listener = (event: Event) => {
+      result = (event as CustomEvent).detail;
+    };
+    window.addEventListener("questhub:submit-result", listener, { once: true });
+    await modal.show();
+
+    expect(result).toEqual({
+      version: 1,
+      kind: "ending",
+      primary: {
+        key: "outcome",
+        label: "Outcome",
+        value: "Defeat",
+      },
+    });
+  });
+});
