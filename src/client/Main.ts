@@ -76,6 +76,7 @@ import { initLayout } from "./Layout";
 import "./LeaderboardModal";
 import { LOCAL_ONLY_FORK } from "./LocalFork";
 import { recoverLocalJoinUi } from "./LocalJoinRecovery";
+import "./LocalStorageBootstrap";
 import "./Matchmaking";
 import { MatchmakingModal } from "./Matchmaking";
 import {
