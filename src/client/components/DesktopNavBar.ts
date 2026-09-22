@@ -1,6 +1,6 @@
 import { html, LitElement } from "lit";
 import { customElement } from "lit/decorators.js";
-import { sourceCodeUrl, WORKING_TITLE } from "../LocalFork";
+import { GAME_TITLE, sourceCodeUrl } from "../LocalFork";
 
 @customElement("desktop-nav-bar")
 export class DesktopNavBar extends LitElement {
@@ -13,7 +13,7 @@ export class DesktopNavBar extends LitElement {
       <nav
         class="hidden lg:flex w-full bg-zinc-900/90 backdrop-blur-md items-center justify-center gap-8 py-4 shrink-0 z-50 relative"
       >
-        <div class="font-black tracking-wide text-white">${WORKING_TITLE}</div>
+        <div class="font-black tracking-wide text-white">${GAME_TITLE}</div>
         <button
           class="nav-menu-item text-white/70 hover:text-sky-400"
           data-page="page-play"

@@ -1,6 +1,6 @@
-# Territory Conquest
+# Realmspan
 
-> Working title for a modified, unofficial local single-player edition based on the open-source OpenFront project.
+> Realmspan is a modified, unofficial local single-player strategy edition based on the open-source OpenFront project.
 
 This fork is intended for a Web game library. The playable build keeps OpenFront's deterministic single-player core, maps, bots, rendering, HUD, combat, building, and local settings while disabling the official multiplayer/account/commerce ecosystem.
 

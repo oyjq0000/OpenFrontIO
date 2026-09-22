@@ -1,4 +1,4 @@
-# NOTICE — Territory Conquest working title
+# NOTICE — Realmspan
 
 This repository is a modified, unofficial version of the open-source OpenFront project.
 It is not the official OpenFront product and is not endorsed by OpenFront Inc.
@@ -33,7 +33,7 @@ Assets under upstream `/proprietary` are All Rights Reserved. Proprietary runtim
 - Removed single-player archive/achievement upload to OpenFront services.
 - Removed CrazyGames SDK, Turnstile, advertising, analytics, and official telemetry scripts from the local page.
 - Added an external `Play Online` link to CrazyGames; multiplayer is not operated by this fork.
-- Replaced OpenFront primary branding with the working title `Territory Conquest` and an explicit modified/unofficial notice.
+- Replaced OpenFront primary branding with the independent title `Realmspan` and an explicit modified/unofficial notice.
 - Excluded proprietary assets from Vite and Docker build inputs; background music is intentionally disabled until replacement assets are supplied.
 
 ## Source availability

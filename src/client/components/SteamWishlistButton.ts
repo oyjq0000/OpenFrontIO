@@ -36,7 +36,7 @@ export class SteamWishlistButton extends LitElement {
         class="group flex w-full items-center justify-center gap-3 rounded border-t border-l border-[#424c5c] bg-[linear-gradient(130deg,#3b4351,#282e39)] px-3 py-2 shadow-md transition-shadow hover:shadow-lg xl:justify-start"
       >
         <span class="hidden text-xs font-black text-white min-[1600px]:block">
-          Territory Conquest
+          Realmspan
         </span>
         <span class="hidden min-w-0 flex-col leading-tight xl:flex">
           <span class="truncate text-sm font-semibold text-white">

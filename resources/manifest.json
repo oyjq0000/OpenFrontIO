@@ -4,8 +4,8 @@
   "display": "standalone",
   "dir": "auto",
   "lang": "en",
-  "name": "Territory Conquest",
-  "short_name": "Territory Conquest",
+  "name": "Realmspan",
+  "short_name": "Realmspan",
   "description": "Modified local single-player edition based on the open-source OpenFront project.",
   "start_url": "/",
   "id": "/"

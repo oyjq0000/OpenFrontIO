@@ -151,7 +151,7 @@ async function main(): Promise<void> {
   const buildInfo = {
     schemaVersion: 1,
     generatedAt: new Date().toISOString(),
-    workingTitle: "Territory Conquest",
+    title: "Realmspan",
     upstreamRepository: "https://github.com/openfrontio/OpenFrontIO",
     upstreamBaseline: UPSTREAM_BASELINE,
     forkRepository: SOURCE_REPOSITORY,
