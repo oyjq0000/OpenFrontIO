@@ -428,12 +428,25 @@ export default defineConfig(({ mode }) => {
       // Add other process.env variables if needed, OR migrate code to import.meta.env
     },
 
+    worker: {
+      rollupOptions: {
+        output: {
+          banner: isGameLibraryStatic
+            ? "globalThis.__zod_globalConfig ??= {}; globalThis.__zod_globalConfig.jitless = true;"
+            : "",
+        },
+      },
+    },
+
     build: {
       outDir: "static", // Webpack outputs to 'static', assuming we want to keep this.
       emptyOutDir: true,
       assetsDir: "assets", // Sub-directory for assets
       rollupOptions: {
         output: {
+          banner: isGameLibraryStatic
+            ? "globalThis.__zod_globalConfig ??= {}; globalThis.__zod_globalConfig.jitless = true;"
+            : "",
           manualChunks: (id) => {
             const vendorModules = ["howler", "zod"];
             if (vendorModules.some((module) => id.includes(module))) {
