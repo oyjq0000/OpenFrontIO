@@ -974,10 +974,22 @@ export function currentPagePath(path: string): string {
  * the same reason: "/" is version-free, so a player leaving to the menu
  * lands on `latest` rather than back on the build they were leaving.
  */
-export function homeHref(): string {
-  const siteHost = ClientEnv.siteHost();
-  if (siteHost !== undefined && window.location.host !== siteHost) {
+export function deriveHomeHref(
+  baseUrl: string,
+  siteHost: string | undefined,
+  currentHost: string,
+): string {
+  if (baseUrl !== "/") return baseUrl;
+  if (siteHost !== undefined && currentHost !== siteHost) {
     return `https://${siteHost}/`;
   }
   return "/";
+}
+
+export function homeHref(): string {
+  return deriveHomeHref(
+    import.meta.env.BASE_URL,
+    ClientEnv.siteHost(),
+    window.location.host,
+  );
 }
