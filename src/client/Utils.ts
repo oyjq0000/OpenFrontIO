@@ -964,11 +964,18 @@ export function currentPagePath(path: string): string {
 }
 
 /**
- * Where "leave to the menu" navigations should land. On a deployment host
- * the local homepage may belong to a drained deployment whose public lobby
- * list is empty; the apex always fronts the active one. Same-host,
- * standalone deployments (no siteHost injected), dev, and desktop keep the
- * plain root.
+ * Where "leave to the menu" navigations should land.
+ *
+ * Game-library builds can live under a reviewed subpath such as
+ * `/games/realmspan/`. Their menu is the Vite base itself; navigating to
+ * "/" would escape the embedded runtime and leave the iframe on the portal
+ * root instead of returning to the game's start screen.
+ *
+ * Root OpenFront builds keep the historical deployment behavior: on a
+ * deployment host the local homepage may belong to a drained deployment
+ * whose public lobby list is empty, so the apex always fronts the active
+ * one. Same-host, standalone deployments (no siteHost injected), dev, and
+ * desktop keep the plain root.
  *
  * The plain root is also the right answer on a `/v/<commit>/` page, and for
  * the same reason: "/" is version-free, so a player leaving to the menu
