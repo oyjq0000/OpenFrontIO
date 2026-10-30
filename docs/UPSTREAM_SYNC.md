@@ -39,3 +39,14 @@ The adopted commits must pass the fork's full local-only gate before merge:
 - final proprietary-runtime-asset audit
 
 The initial baseline remains unchanged for provenance. Exact corresponding source for every distributed build is the fork commit embedded by `build-game-library`.
+
+## 2026-10-30 selective Nations AI integration
+
+- Source base: fork `41472100457827e8cf09b30e8b8947bd02631b14` (already includes six local fixes/tests for attack refund and water-nuke edge cases).
+- ADOPT `7daa92df69002dbb5b061392eccc1caf1a8a07ad`: safer boat choices, retaliation, runaway-leader pressure, naval interception, and regression tests.
+- ADOPT `c783e13d5f190cf2ce77a792d7d177a49dc2b505`: 1% beachhead boats and early Nation economy, with tests.
+- ADOPT `34a8fe72308fe2768ae4d3cb61c6733c1831c2bd`: avoid duplicate and low-value nuclear strikes, with tests.
+- SKIP unrelated upstream snapshot/restore additions encountered in cherry-pick conflicts; keep local-only runtime unchanged. Do not reinstate the removed NationsWorld replay fixture.
+- DEFER `fac309acc80359702ce0996372ac99e5d9d8dd3f` (large `packages/engine` refactor), onboarding overlay/tutorial (requires engine/UI port and local-entry-point review), and new maps (require asset/route/license checks). These are separate future upgrades, not included in this release.
+- Focused verification: `npx tsc --noEmit` passed; `npx vitest run Nation --reporter=dot` passed 18 files / 228 tests. Full Windows `npm test` is not a reliable Linux shell-script gate because `tests/UpdateFlagLatest.test.ts` requires `jq`; Linux CI remains mandatory before merge/deploy.
+- Preserve local no-account/no-multiplayer behavior, third-party asset audit, same-origin runtime, `/games/realmspan/` base path, and QuestHub Bridge contract.
