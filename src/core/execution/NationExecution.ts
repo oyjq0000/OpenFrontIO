@@ -244,6 +244,7 @@ export class NationExecution implements Execution {
       this.expandRatio,
       this.allianceBehavior,
       this.emojiBehavior,
+      this.warshipBehavior,
     );
     this.nukeBehavior = new NationNukeBehavior(
       this.random,
