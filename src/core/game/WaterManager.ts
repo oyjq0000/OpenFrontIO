@@ -424,19 +424,22 @@ export class WaterManager {
       if (!this.miniMap.isLand(miniTile)) continue;
       const fx = this.miniMap.x(miniTile) * 2;
       const fy = this.miniMap.y(miniTile) * 2;
-      let waterCount = 0;
-      let totalCount = 0;
+      // One converted source tile is enough to mark its 2x2 minimap cell
+      // as water, so shoreline pathfinding never loses a water component.
+      let isWater = false;
       for (let dy = 0; dy < 2; dy++) {
         for (let dx = 0; dx < 2; dx++) {
-          if (map.isValidCoord(fx + dx, fy + dy)) {
-            totalCount++;
-            if (map.isWater(map.ref(fx + dx, fy + dy))) {
-              waterCount++;
-            }
+          if (
+            map.isValidCoord(fx + dx, fy + dy) &&
+            map.isWater(map.ref(fx + dx, fy + dy))
+          ) {
+            isWater = true;
+            break;
           }
         }
+        if (isWater) break;
       }
-      if (waterCount >= Math.min(3, totalCount)) {
+      if (isWater) {
         this.miniMap.setWater(miniTile);
         convertedMiniTiles.add(miniTile);
       }
