@@ -1,4 +1,5 @@
 import { AttackExecution } from "../src/core/execution/AttackExecution";
+import { RetreatExecution } from "../src/core/execution/RetreatExecution";
 import { SpawnExecution } from "../src/core/execution/SpawnExecution";
 import { TransportShipExecution } from "../src/core/execution/TransportShipExecution";
 import {
@@ -721,5 +722,96 @@ describe("Fractional attack troop duplication (#4948)", () => {
 
     expect(Number.isInteger(outgoingTroops())).toBe(true);
     expect(outgoingTroops()).toBe(100);
+  });
+});
+
+describe("Attack absorbed on the tick its retreat completes", () => {
+  let rGame: Game;
+  let rAttacker: Player;
+  let rDefender: Player;
+
+  beforeEach(async () => {
+    rGame = await setup("ocean_and_land", {
+      infiniteGold: true,
+      instantBuild: true,
+    });
+    const attackerInfo = new PlayerInfo(
+      "attacker dude",
+      PlayerType.Human,
+      null,
+      "attacker_id",
+    );
+    const defenderInfo = new PlayerInfo(
+      "defender dude",
+      PlayerType.Human,
+      null,
+      "defender_id",
+    );
+    rGame.addPlayer(attackerInfo);
+    rGame.addPlayer(defenderInfo);
+    rGame.addExecution(
+      new SpawnExecution(gameID, attackerInfo, rGame.ref(0, 10)),
+      new SpawnExecution(gameID, defenderInfo, rGame.ref(0, 15)),
+    );
+    rGame.executeNextTick();
+    rGame.executeNextTick();
+    rAttacker = rGame.player(attackerInfo.id);
+    rDefender = rGame.player(defenderInfo.id);
+    while (rGame.inSpawnPhase()) rGame.executeNextTick();
+    for (let i = 0; i < immunityPhaseTicks + 1; i++) rGame.executeNextTick();
+    // Gives the defender enough land that the attack is still running when
+    // its retreat completes.
+    rGame.addExecution(
+      new AttackExecution(null, rDefender, rGame.terraNullius().id()),
+    );
+    rGame.executeNextTick();
+    while (rDefender.outgoingAttacks().length > 0) rGame.executeNextTick();
+  });
+
+  function total(player: Player): number {
+    return player
+      .outgoingAttacks()
+      .reduce((sum, attack) => sum + attack.troops(), player.troops());
+  }
+
+  // Lands the follow-up's init on the tick RetreatExecution calls
+  // executeRetreat, so the retreating attack is absorbed before its own
+  // execution sees retreated(). Returns the troops it held.
+  function absorbOnRetreatTick(followUp: () => AttackExecution): number {
+    rGame.addExecution(new AttackExecution(null, rAttacker, rDefender.id()));
+    rGame.executeNextTick();
+    const retreating = rAttacker.outgoingAttacks()[0];
+    rGame.addExecution(new RetreatExecution(rAttacker, retreating.id()));
+    for (let i = 0; i < 20; i++) rGame.executeNextTick();
+    expect(retreating.retreated()).toBe(false);
+    const absorbed = retreating.troops();
+    rGame.addExecution(followUp());
+    rGame.executeNextTick();
+    expect(retreating.retreated()).toBe(true);
+    expect(retreating.isActive()).toBe(false);
+    return absorbed;
+  }
+
+  function expectNoRefund(absorbed: number) {
+    const before = total(rAttacker);
+    rGame.executeNextTick();
+    // A duplicated refund is 75% of the absorbed troops; regen is far less.
+    expect(total(rAttacker) - before).toBeLessThan(absorbed * 0.1);
+  }
+
+  it("does not refund an attack merged into a new one", () => {
+    expectNoRefund(
+      absorbOnRetreatTick(
+        () => new AttackExecution(null, rAttacker, rDefender.id()),
+      ),
+    );
+  });
+
+  it("does not refund an attack cancelled out by the target", () => {
+    expectNoRefund(
+      absorbOnRetreatTick(
+        () => new AttackExecution(null, rDefender, rAttacker.id()),
+      ),
+    );
   });
 });
