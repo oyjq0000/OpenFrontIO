@@ -1,4 +1,4 @@
-import { GameMapType, UnitType } from "../../core/game/Game";
+import { GameMapType, UnitType, listedMaps } from "../../core/game/Game";
 import { GameConfig } from "../../core/Schemas";
 
 /**
@@ -124,7 +124,7 @@ export function getNationsForCompactMap(
 }
 
 export function getRandomMapType(): GameMapType {
-  const maps = Object.values(GameMapType);
+  const maps = listedMaps.map((m) => m.type);
   const randIdx = Math.floor(Math.random() * maps.length);
   return maps[randIdx] as GameMapType;
 }

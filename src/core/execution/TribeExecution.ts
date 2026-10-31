@@ -59,6 +59,11 @@ export class TribeExecution implements Execution {
       return;
     }
 
+    if (this.mg.config().gameConfig().tutorial) {
+      this.attackBehavior.expandIntoFreeLand();
+      return;
+    }
+
     this.acceptAllAllianceRequests();
     this.deleteNextStructure();
     this.maybeAttack();

@@ -754,3 +754,20 @@ unit-display .tutorial-highlight::after {
 .remove-player-btn:hover {
   background: #ef4444;
 }
+
+@keyframes onboarding-shake {
+  0%,
+  100% {
+    transform: translateX(-50%);
+  }
+  25%,
+  75% {
+    transform: translateX(calc(-50% - 7px));
+  }
+  50% {
+    transform: translateX(calc(-50% + 7px));
+  }
+}
+.onboarding-shake {
+  animation: onboarding-shake 0.25s ease-in-out;
+}

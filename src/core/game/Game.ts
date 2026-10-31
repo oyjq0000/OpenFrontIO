@@ -117,6 +117,7 @@ export const ColoredTeams: Record<string, Team> = {
 // (`npm run gen-maps`).
 export {
   GameMapType,
+  listedMaps,
   mapCategoryOrder,
   maps,
   type CustomTribe,

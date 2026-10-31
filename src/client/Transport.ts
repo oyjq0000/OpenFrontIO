@@ -84,6 +84,11 @@ export class SendAllianceExtensionIntentEvent implements GameEvent {
   constructor(public readonly recipient: PlayerView) {}
 }
 
+/** Guard every gameplay intent while the interactive tutorial is active. */
+export class SetIntentGateEvent implements GameEvent {
+  constructor(public readonly gate: ((intent: Intent) => boolean) | null) {}
+}
+
 export class SendSpawnIntentEvent implements GameEvent {
   constructor(public readonly tile: TileRef) {}
 }
@@ -263,6 +268,7 @@ export class Transport {
   // the roster in the start message. Null until the game starts, which is
   // also the last moment a peer can send a dictionary-encoded field.
   private zbinCtx: ZbContext | null = null;
+  private intentGate: ((intent: Intent) => boolean) | null = null;
 
   // The bus outlives the transport (one per page, one transport per join),
   // so every subscription must be undone in leaveGame or a superseded
@@ -291,6 +297,7 @@ export class Transport {
     this.subscribe(SendBreakAllianceIntentEvent, (e) =>
       this.onBreakAllianceRequestUIEvent(e),
     );
+    this.subscribe(SetIntentGateEvent, (e) => (this.intentGate = e.gate));
     this.subscribe(SendSpawnIntentEvent, (e) => this.onSendSpawnIntentEvent(e));
     this.subscribe(SendAttackIntentEvent, (e) => this.onSendAttackIntent(e));
     this.subscribe(SendUpgradeStructureIntentEvent, (e) =>
@@ -951,6 +958,7 @@ export class Transport {
   }
 
   private sendIntent(intent: Intent) {
+    if (this.intentGate !== null && !this.intentGate(intent)) return;
     const msg = {
       type: "intent",
       intent: intent,

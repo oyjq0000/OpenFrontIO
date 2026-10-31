@@ -82,6 +82,12 @@ export class AiAttackBehavior {
     private warshipBehavior?: NationWarshipBehavior,
   ) {}
 
+  /** Passive tutorial rival: grow into adjacent neutral land only. */
+  expandIntoFreeLand(): boolean {
+    if (!this.hasLandBorderWithTerraNullius()) return false;
+    return this.sendLandAttack(this.game.terraNullius());
+  }
+
   maybeAttack() {
     const routes = new Map<Player, BoatRoute | null>();
     this.boatRoutes = routes;

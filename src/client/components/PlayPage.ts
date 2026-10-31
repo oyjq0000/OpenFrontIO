@@ -97,12 +97,19 @@ export class PlayPage extends LitElement {
           />
         </label>
 
-        <div class="grid w-full max-w-xl gap-3 sm:grid-cols-2">
+        <div class="grid w-full max-w-3xl gap-3 sm:grid-cols-3">
           <button
             class="rounded-xl bg-sky-500 px-6 py-4 text-lg font-black text-white transition hover:bg-sky-400"
             @click=${() => this.showPage("page-single-player")}
           >
             Play Solo
+          </button>
+          <button
+            class="rounded-xl border border-sky-400/50 bg-sky-400/10 px-6 py-4 text-lg font-black text-sky-100 transition hover:bg-sky-400/20"
+            @click=${() =>
+              document.dispatchEvent(new CustomEvent("start-tutorial"))}
+          >
+            Guided Tutorial
           </button>
           <a
             class="rounded-xl border border-white/20 bg-white/5 px-6 py-4 text-lg font-black text-white transition hover:bg-white/10"
