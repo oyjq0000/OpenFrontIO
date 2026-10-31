@@ -573,7 +573,9 @@ export class SinglePlayerModal extends BaseModal {
     this.selectedMap = GameMapType.Tutorial;
     this.useRandomMap = false;
     this.selectedDifficulty = Difficulty.Easy;
-    this.bots = 0;
+    // One positioned Hill Tribe is required for the attack step.
+    this.bots = 1;
+    this.randomSpawn = false;
     this.gameMode = GameMode.FFA;
     await this.loadNationCount();
     this.nations = this.defaultNationCount;
@@ -982,6 +984,7 @@ export class SinglePlayerModal extends BaseModal {
                   : GameMapSize.Normal,
                 gameType: GameType.Singleplayer,
                 tutorial: this.tutorialMode,
+                ...(this.tutorialMode ? { disableAlliances: true } : {}),
                 gameMode: this.gameMode,
                 playerTeams: this.teamCount,
                 difficulty: this.selectedDifficulty,
