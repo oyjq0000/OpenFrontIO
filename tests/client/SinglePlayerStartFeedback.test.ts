@@ -89,7 +89,11 @@ describe("SinglePlayerModal local-only start", () => {
     await modal.startTutorial();
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock).toHaveBeenCalledWith("/maps/world/manifest.json");
+    expect(fetchMock).toHaveBeenCalledWith("/maps/tutorial/manifest.json");
+    expect(joins[0].detail.gameStartInfo.config.tutorial).toBe(true);
+    expect(joins[0].detail.gameStartInfo.config.bots).toBe(1);
+    expect(joins[0].detail.gameStartInfo.config.disableAlliances).toBe(true);
+    expect(joins[0].detail.gameStartInfo.config.randomSpawn).toBe(false);
     expect(joins).toHaveLength(1);
     expect(joins[0].detail.gameStartInfo.players[0].username).toBe(
       "Local Tester",

@@ -127,6 +127,10 @@ export class TutorialPanel extends LitElement implements Controller {
   }
 
   tick() {
+    if (this.game.config().gameConfig().tutorial) {
+      this.setActive(false);
+      return;
+    }
     // Deferred to the first tick so every controller's init() has already
     // subscribed to TutorialStateEvent.
     if (!this.started) {

@@ -275,6 +275,11 @@ export class WinModal extends LitElement implements Controller {
   }
 
   async show() {
+    // The guided scenario owns its victory panel; no ordinary game result.
+    if (this.game.config().gameConfig().tutorial) {
+      this.isVisible = false;
+      return;
+    }
     this.isRankedGame =
       !LOCAL_ONLY_FORK &&
       this.game.config().gameConfig().rankedType !== undefined;

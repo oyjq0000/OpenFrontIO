@@ -36,6 +36,14 @@ const FREQUENCY_EXEMPTIONS: Set<GameMapName> = new Set([
   "BritanniaClassic",
   "ChoppingBlock",
   "Luna",
+  "Tutorial",
+  "VancouverIsland",
+  "RioDeJaneiro",
+  "Madagascar",
+  "HornOfAfrica",
+  "CapeOfGoodHope",
+  "Benelux",
+  "BabelMandebStrait",
 ]);
 
 // Keys in the en.json "map" section that are UI strings, not map names.
@@ -104,6 +112,10 @@ function normalizeCustomTribes(raw: unknown): CustomTribe[] | undefined {
 // ── Tests ────────────────────────────────────────────────────────────────────
 
 describe("Map consistency", () => {
+  test("every canonical map value is distinct", () => {
+    const values = Object.values(GameMapType);
+    expect(new Set(values).size).toBe(values.length);
+  });
   test("Every GameMapType has map-generator assets (image.png + info.json + layer PNGs only)", () => {
     const errors: string[] = [];
     for (const key of allMapKeys) {

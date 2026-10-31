@@ -351,6 +351,20 @@ class Client {
       )?.startTutorial();
     });
 
+    // The tutorial's "Play a solo game" button is a same-subpath redirect.
+    // Local-only boot returns before the upstream URL/query handler, so
+    // consume this query here, without invoking remote startup services.
+    const currentUrl = new URL(window.location.href);
+    if (currentUrl.searchParams.has("solo_guide")) {
+      currentUrl.searchParams.delete("solo_guide");
+      window.history.replaceState(window.history.state, "", currentUrl);
+      void customElements.whenDefined("single-player-modal").then(() => {
+        void (
+          document.querySelector("single-player-modal") as SinglePlayerModal
+        )?.startSoloWithGuide();
+      });
+    }
+
     window.addEventListener("beforeunload", () => {
       this.lobbyHandle?.stop(true);
       setInGameSignal(false);

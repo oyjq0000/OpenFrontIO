@@ -8,7 +8,7 @@ import {
   MapCategory,
   mapCategoryOrder,
   MapInfo,
-  maps,
+  listedMaps as maps,
 } from "../../../core/game/Game";
 import { translateText } from "../../Utils";
 import "./MapDisplay";

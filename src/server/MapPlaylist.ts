@@ -1,6 +1,6 @@
 import { SAM_CONSTRUCTION_TICKS } from "../core/configuration/Config";
 import {
-  maps as allMaps,
+  listedMaps as allMaps,
   Difficulty,
   Duos,
   GameMapSize,

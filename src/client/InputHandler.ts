@@ -962,7 +962,8 @@ export class InputHandler {
         !this.userSettings.leftClickOpensMenu() ||
         event.shiftKey ||
         this.gameView.inSpawnPhase() || // No Radial Menu during spawn phase, only spawn point selection
-        this.uiState.ghostStructure !== null // Block radial menu on left click if building
+        this.uiState.ghostStructure !== null || // Block radial menu on left click if building
+        this.gameView.config?.().gameConfig().tutorial === true
       ) {
         this.eventBus.emit(new MouseUpEvent(event.x, event.y));
       } else {

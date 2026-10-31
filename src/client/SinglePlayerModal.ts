@@ -175,6 +175,8 @@ export class SinglePlayerModal extends BaseModal {
   // Which attempt the starting overlay is up for, so a retired attempt's
   // cleanup cannot hide the overlay a newer attempt has shown.
   private overlayAttempt: number = 0;
+  /** Only set for the guarded, local-only onboarding scenario. */
+  private tutorialMode = false;
 
   private mapLoader = terrainMapFileLoader;
 
@@ -565,14 +567,41 @@ export class SinglePlayerModal extends BaseModal {
     this.resetOptions();
   }
 
-  /**
-   * Starts a solo game on the default settings without opening the modal,
-   * with the in-game tutorial switched back on (the play page's Tutorial
-   * card for new players).
-   */
+  /** Start the guided, isolated beginner scenario with its hidden tutorial map. */
   public async startTutorial(): Promise<void> {
     this.resetOptions();
-    // A nation count of 0 means "nations disabled"; wait for the real one.
+    this.selectedMap = GameMapType.Tutorial;
+    this.useRandomMap = false;
+    this.selectedDifficulty = Difficulty.Easy;
+    // One positioned Hill Tribe is required for the attack step.
+    this.bots = 1;
+    this.randomSpawn = false;
+    this.gameMode = GameMode.FFA;
+    await this.loadNationCount();
+    this.nations = this.defaultNationCount;
+    this.disabledUnits = [
+      UnitType.City,
+      UnitType.Port,
+      UnitType.DefensePost,
+      UnitType.Factory,
+      UnitType.Warship,
+      UnitType.MissileSilo,
+      UnitType.SAMLauncher,
+      UnitType.AtomBomb,
+      UnitType.HydrogenBomb,
+      UnitType.MIRV,
+    ];
+    this.tutorialMode = true;
+    try {
+      await this.startGame();
+    } finally {
+      this.tutorialMode = false;
+    }
+  }
+
+  /** Follow the beginner scenario with the existing, optional advanced guide. */
+  public async startSoloWithGuide(): Promise<void> {
+    this.resetOptions();
     await this.loadNationCount();
     new UserSettings().setTutorialDismissed(false);
     await this.startGame();
@@ -584,6 +613,7 @@ export class SinglePlayerModal extends BaseModal {
     // the modal must always give the player a live Start button back, whatever
     // left the previous attempt in flight.
     this.starting = false;
+    this.tutorialMode = false;
     this.selectedMap = DEFAULT_OPTIONS.selectedMap;
     this.selectedDifficulty = DEFAULT_OPTIONS.selectedDifficulty;
     this.gameMode = DEFAULT_OPTIONS.gameMode;
@@ -953,6 +983,8 @@ export class SinglePlayerModal extends BaseModal {
                   ? GameMapSize.Compact
                   : GameMapSize.Normal,
                 gameType: GameType.Singleplayer,
+                tutorial: this.tutorialMode,
+                ...(this.tutorialMode ? { disableAlliances: true } : {}),
                 gameMode: this.gameMode,
                 playerTeams: this.teamCount,
                 difficulty: this.selectedDifficulty,

@@ -1030,6 +1030,11 @@ export class Config {
             .reduce((a, b) => a + b, 0) *
             this.cityTroopIncrease();
 
+    // Passive tutorial rivals must remain beatable while they only expand.
+    if (this._gameConfig.tutorial && player.type() !== PlayerType.Human) {
+      return maxTroops * 0.1;
+    }
+
     if (player.type() === PlayerType.Bot) {
       return maxTroops / 3;
     }
